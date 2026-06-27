@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Reading & Math</title>
+<style>
+:root{--bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--border:#2e3352;--accent:#5b7ff5;--success:#3dba7a;--warning:#f5a623;--danger:#e85d5d;--text:#e8eaf0;--text2:#8b92b3;--r:12px;--rs:8px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;}
+#app{max-width:1060px;margin:0 auto;padding:16px 14px 60px;}
+h1{font-size:1.7rem;font-weight:700;}h2{font-size:1.3rem;font-weight:600;}h3{font-size:1.05rem;font-weight:600;}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:14px;}
+.card-sm{padding:14px;}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 20px;border:none;border-radius:var(--rs);font-size:.95rem;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;}
+.btn:hover{opacity:.88;}.btn:active{transform:scale(.97);}.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-primary{background:var(--accent);color:#fff;}.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border);}
+.btn-success{background:var(--success);color:#fff;}.btn-warning{background:var(--warning);color:#000;}.btn-full{width:100%;}.btn-lg{padding:14px 28px;font-size:1rem;}
+.row{display:flex;gap:10px;flex-wrap:wrap;}.row>*{flex:1;min-width:120px;}
+label{display:block;font-size:.82rem;color:var(--text2);margin-bottom:5px;font-weight:500;}
+input[type="text"],input[type="password"],textarea{width:100%;padding:9px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:.95rem;outline:none;transition:border-color .15s;}
+input:focus,textarea:focus{border-color:var(--accent);}
+textarea{resize:vertical;font-family:inherit;}
+input[type="number"]{width:80px;padding:7px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);color:var(--text);font-size:.95rem;outline:none;}
+input[type="range"]{width:100%;accent-color:var(--accent);}
+.tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.75rem;font-weight:600;background:var(--surface2);border:1px solid var(--border);}
+.tag-accent{background:rgba(91,127,245,.18);border-color:var(--accent);color:var(--accent);}
+.tag-success{background:rgba(61,186,122,.15);border-color:var(--success);color:var(--success);}
+.divider{border:none;border-top:1px solid var(--border);margin:16px 0;}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-center{text-align:center;padding:60px 20px;}
+.loading-center p{margin-top:14px;color:var(--text2);}
+/* Story */
+.story-text{font-size:1rem;line-height:1.9;white-space:pre-wrap;}
+.story-panel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;overflow-y:auto;}
+/* Questions two-col layout */
+.q-layout{display:grid;grid-template-columns:45% 1fr;gap:14px;align-items:start;}
+.q-story-col{position:sticky;top:14px;display:flex;flex-direction:column;gap:8px;}
+.q-story-col .story-panel{overflow-y:auto;height:calc(100vh - 160px);min-height:400px;}
+@media(max-width:740px){
+  .q-layout{grid-template-columns:1fr;}
+  .q-story-col{position:static;}
+  .q-story-col .story-panel{height:260px;min-height:200px;}
+}
+/* Hints / answers */
+.hint-box{background:rgba(245,166,35,.08);border:1px solid rgba(245,166,35,.3);border-radius:var(--rs);padding:12px 14px;margin-top:10px;font-size:.93rem;}
+.answer-box{background:rgba(61,186,122,.08);border:1px solid rgba(61,186,122,.3);border-radius:var(--rs);padding:12px 14px;margin-top:10px;font-size:.93rem;}
+.error-box{background:rgba(232,93,93,.1);border:1px solid rgba(232,93,93,.3);border-radius:var(--rs);padding:12px 14px;margin-top:10px;}
+/* Wrong attempt display */
+.wrong-attempt{background:rgba(232,93,93,.07);border:1px solid rgba(232,93,93,.25);border-radius:var(--rs);padding:9px 13px;margin-top:8px;font-size:.88rem;}
+.wrong-attempt-label{font-size:.72rem;font-weight:700;color:var(--danger);text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+/* Progress dots */
+.q-dots{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.q-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;cursor:pointer;transition:transform .1s;}
+.q-dot:hover{transform:scale(1.1);}
+.q-dot-correct{background:var(--success);color:#fff;}
+.q-dot-wrong{background:var(--danger);color:#fff;}
+.q-dot-current{background:var(--accent);color:#fff;box-shadow:0 0 0 3px rgba(91,127,245,.35);}
+.q-dot-upcoming{background:var(--surface2);color:var(--text2);border:1px solid var(--border);}
+.q-review-popup{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-top:8px;font-size:.87rem;}
+.correct-tag{color:var(--success);font-weight:700;font-size:.76rem;}
+.wrong-tag{color:var(--danger);font-weight:700;font-size:.76rem;}
+/* Clarify */
+.clarify-section{margin-top:14px;border-top:1px solid var(--border);padding-top:12px;}
+.clarify-toggle{color:var(--accent);font-size:.84rem;cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;}
+.clarify-form{margin-top:8px;display:flex;gap:8px;}
+.clarify-form textarea{min-height:46px;}
+.clarify-response{background:rgba(91,127,245,.08);border:1px solid rgba(91,127,245,.2);border-radius:var(--rs);padding:10px 12px;margin-top:8px;font-size:.9rem;}
+/* Parent review */
+.pr-field{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
+.pr-field:last-child{border-bottom:none;}
+.pr-field label{margin:0;min-width:170px;font-size:.92rem;color:var(--text);}
+.level-announce{padding:10px 14px;margin:6px 0;background:rgba(61,186,122,.1);border:1px solid rgba(61,186,122,.3);border-radius:var(--rs);color:var(--success);font-weight:600;}
+/* Child switcher */
+.child-switcher{display:flex;border-radius:var(--rs);overflow:hidden;border:1px solid var(--border);width:fit-content;}
+.child-tab{padding:7px 22px;cursor:pointer;font-weight:600;font-size:.9rem;background:var(--surface2);color:var(--text2);border:none;transition:background .15s,color .15s;}
+.child-tab.active{background:var(--accent);color:#fff;}
+/* Option buttons */
+.option-btn{display:block;width:100%;text-align:left;padding:14px 18px;margin-bottom:10px;background:var(--surface2);border:2px solid var(--border);border-radius:var(--r);cursor:pointer;color:var(--text);font-size:.95rem;transition:border-color .15s,background .15s;}
+.option-btn:hover{border-color:var(--accent);background:rgba(91,127,245,.06);}
+/* Gamification */
+.points-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;background:rgba(245,166,35,.15);border:1px solid rgba(245,166,35,.3);border-radius:20px;font-size:.82rem;font-weight:700;color:var(--warning);cursor:pointer;}
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-top:12px;}
+.badge-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:12px;text-align:center;}
+.badge-card.earned{border-color:var(--warning);background:rgba(245,166,35,.08);}
+.badge-card.locked{opacity:.42;}
+.badge-icon{font-size:1.8rem;margin-bottom:4px;}
+.badge-name{font-size:.76rem;font-weight:600;line-height:1.3;}
+.badge-desc{font-size:.68rem;color:var(--text2);margin-top:3px;line-height:1.3;}
+.store-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-top:12px;}
+.store-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:14px;text-align:center;}
+.store-card.owned{border-color:var(--success);}
+.store-price{font-size:.8rem;color:var(--warning);font-weight:700;margin-top:6px;}
+.store-name{font-size:.88rem;font-weight:600;}
+.store-desc{font-size:.72rem;color:var(--text2);margin-top:3px;line-height:1.3;}
+.top-nav{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.top-nav-right{margin-left:auto;display:flex;gap:8px;align-items:center;}
+.history-session{background:var(--surface2);border:1px solid var(--border);border-radius:var(--rs);padding:14px;margin-bottom:10px;}
+.history-q{padding:8px 0;border-bottom:1px solid var(--border);font-size:.87rem;}
+.history-q:last-child{border-bottom:none;}
+.score-big{font-size:2.8rem;font-weight:800;text-align:center;color:var(--accent);line-height:1;}
+.pts-earned{font-size:1.1rem;color:var(--warning);font-weight:700;text-align:center;margin-top:4px;}
+.api-key-note{font-size:.78rem;color:var(--text2);margin-top:5px;}
+/* Correct-answer celebration */
+.correct-celebrate{background:linear-gradient(135deg,rgba(61,186,122,.15),rgba(91,127,245,.08));border:2px solid var(--success);border-radius:var(--r);padding:28px 20px;text-align:center;animation:cel-in .3s ease;}
+@keyframes cel-in{from{opacity:0;transform:scale(.94);}to{opacity:1;transform:scale(1);}}
+.celebrate-check{font-size:3rem;line-height:1;margin-bottom:8px;}
+.celebrate-pts{font-size:2rem;font-weight:800;color:var(--success);}
+.celebrate-bonus{font-size:1.1rem;color:var(--warning);font-weight:700;margin-top:2px;}
+.celebrate-sub{color:var(--text2);font-size:.88rem;margin-top:8px;}
+/* Floating trail particles */
+@keyframes particle-rise{0%{opacity:1;transform:translate(0,0) scale(1);}100%{opacity:0;transform:translate(var(--tx),var(--ty)) scale(.4);}}
+.trail-particle{position:fixed;pointer-events:none;z-index:9999;font-size:1.6rem;animation:particle-rise 1.1s ease-out forwards;}
+/* Avatar */
+.avatar-wrap{display:inline-block;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5));}
+.equip-slot-label{font-size:.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 5px;}
+.equip-row{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:4px;}
+.equip-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:20px;font-size:.8rem;font-weight:600;border:2px solid var(--border);background:var(--surface2);cursor:pointer;transition:border-color .12s,background .12s;}
+.equip-chip:hover{border-color:var(--accent);}
+.equip-chip.active{border-color:var(--accent);background:rgba(91,127,245,.12);}
+.equip-chip.locked{opacity:.45;cursor:default;}
+/* Themes switcher */
+.theme-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.theme-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:.82rem;font-weight:600;border:2px solid var(--border);background:var(--surface2);cursor:pointer;transition:border-color .12s;}
+.theme-chip.active{border-color:var(--accent);}
+.theme-chip.locked{opacity:.42;cursor:default;}
+.theme-swatch{width:14px;height:14px;border-radius:50%;flex-shrink:0;}
+/* Dramatic theme body classes */
+body.th-hacker{background-image:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,230,118,.018) 3px,rgba(0,230,118,.018) 4px);}
+body.th-space{background-image:radial-gradient(1px 1px at 22% 18%,rgba(255,255,255,.45),transparent),radial-gradient(1px 1px at 68% 8%,rgba(255,255,255,.35),transparent),radial-gradient(1px 1px at 40% 55%,rgba(255,255,255,.3),transparent),radial-gradient(1px 1px at 85% 40%,rgba(255,255,255,.4),transparent),radial-gradient(1px 1px at 12% 70%,rgba(255,255,255,.35),transparent);}
+body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.3;pointer-events:none;}
+.session-hdr{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+.mt4{margin-top:4px;}.mt8{margin-top:8px;}.mt10{margin-top:10px;}.mt12{margin-top:12px;}.mt16{margin-top:16px;}.mt20{margin-top:20px;}
+.mb4{margin-bottom:4px;}.mb8{margin-bottom:8px;}.mb10{margin-bottom:10px;}.mb12{margin-bottom:12px;}.mb16{margin-bottom:16px;}
+.text-muted{color:var(--text2);}.text-sm{font-size:.85rem;}.text-xs{font-size:.75rem;}
+.text-success{color:var(--success);}.text-danger{color:var(--danger);}.text-warning{color:var(--warning);}.text-accent{color:var(--accent);}
+.bold{font-weight:700;}.text-center{text-align:center;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+
+// ─── Profiles ─────────────────────────────────────────────────────────────────
+const PROFILES = {
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Fractions','Measurement and Data','Fractions','Measurement and Data','Algebra','Geometry'],numQuestions:5},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5},
+};
+
+const ALL_BADGES = [
+  {id:'detective_rookie',icon:'🔍',name:'Detective Rookie',desc:'Complete 3 Detective stories',check:(st)=>(st.detectiveCount||0)>=3},
+  {id:'master_detective',icon:'🕵️',name:'Master Detective',desc:'Complete 10 Detective stories',check:(st)=>(st.detectiveCount||0)>=10},
+  {id:'path_finder',icon:'🗺️',name:'Path Finder',desc:'Complete 3 Choose-Your-Path stories',check:(st)=>(st.cypCount||0)>=3},
+  {id:'choice_master',icon:'⚡',name:'Choice Master',desc:'Complete 10 Choose-Your-Path stories',check:(st)=>(st.cypCount||0)>=10},
+  {id:'no_hints',icon:'🎯',name:'No Hints Needed',desc:'Perfect score, zero hints used',check:(st,sess)=>sess&&sess.allNoHint&&sess.score===sess.total},
+  {id:'comeback_kid',icon:'💪',name:'Comeback Kid',desc:'Recover from a wrong answer to finish strong',check:(st,sess)=>sess&&sess.hadComeback},
+  {id:'week_streak',icon:'📅',name:'Week Streak',desc:'7 days in a row',check:(st)=>(st.consecutiveStreak||0)>=7},
+  {id:'month_streak',icon:'🏆',name:'Month Streak',desc:'30 days in a row',check:(st)=>(st.consecutiveStreak||0)>=30},
+  {id:'reading_up',icon:'📚',name:'Reading Level Up',desc:'Reach a new reading level',check:(st,sess)=>sess&&sess.readingLevelUp},
+  {id:'math_up',icon:'🧮',name:'Math Level Up',desc:'Reach a new math level',check:(st,sess)=>sess&&sess.mathLevelUp},
+  {id:'sharpshooter',icon:'🏹',name:'Sharpshooter',desc:'5 perfect sessions total',check:(st)=>(st.perfectSessions||0)>=5},
+  {id:'fractions_ace',icon:'🍕',name:'Fractions Ace',desc:'5 Fractions sessions',check:(st)=>(st.domainCounts?.Fractions||0)>=5},
+  {id:'data_ace',icon:'📊',name:'Data Detective',desc:'5 Measurement & Data sessions',check:(st)=>(st.domainCounts?.['Measurement and Data']||0)>=5},
+  {id:'algebra_ace',icon:'➕',name:'Algebra Ace',desc:'5 Algebra sessions',check:(st)=>(st.domainCounts?.Algebra||0)>=5},
+  {id:'geometry_ace',icon:'📐',name:'Geometry Genius',desc:'5 Geometry sessions',check:(st)=>(st.domainCounts?.Geometry||0)>=5},
+  {id:'century',icon:'💯',name:'Century',desc:'Earn 100 total points',check:(st)=>(st.points||0)>=100},
+  {id:'five_hundred',icon:'🌟',name:'Five Hundred',desc:'Earn 500 total points',check:(st)=>(st.points||0)>=500},
+];
+
+const STORE = {
+  gio:[
+    {id:'theme_hacker',name:'Hacker Mode',icon:'💻',type:'theme',cost:150,desc:'Green-on-dark scheme',color:'#00e676'},
+    {id:'theme_ocean',name:'Ocean Deep',icon:'🌊',type:'theme',cost:100,desc:'Deep cyan scheme',color:'#00b4d8'},
+    {id:'theme_space',name:'Space Nebula',icon:'🪐',type:'theme',cost:100,desc:'Purple cosmic scheme',color:'#c77dff'},
+    {id:'pack_scifi',name:'Sci-Fi Pack',icon:'🚀',type:'setting_pack',cost:80,desc:'3 sci-fi story starters',settings:['A hacker aboard a space station discovers a rogue AI controlling life support…','Two kids find a dimensional portal inside their school locker…','A robot designed to feel emotions tries to pass as human at middle school…']},
+    {id:'pack_sports',name:'Sports Legends',icon:'🏆',type:'setting_pack',cost:80,desc:'3 sports story starters',settings:['A backup QB gets one shot at the championship with 30 seconds left…','A skateboarder tries to land the trick that put his hero in a wheelchair…','A swimmer discovers his rival has been cheating all season…']},
+    {id:'custom_hero',name:'Custom Hero Name',icon:'🦸',type:'hero_name',cost:75,desc:'Name the hero in every story'},
+  ],
+  valentino:[
+    {id:'theme_dino',name:'Dino World',icon:'🦖',type:'theme',cost:80,desc:'Prehistoric green scheme',color:'#52b788'},
+    {id:'theme_hero',name:'Superhero City',icon:'🦸',type:'theme',cost:80,desc:'Bold red scheme',color:'#ef233c'},
+    {id:'theme_sunny',name:'Sunny Day',icon:'☀️',type:'theme',cost:80,desc:'Warm orange scheme',color:'#ff9f1c'},
+    {id:'pack_animals',name:'Animal Adventures',icon:'🐾',type:'setting_pack',cost:60,desc:'3 animal story starters',settings:['A puppy named Biscuit follows mysterious paw prints through the park…','A baby elephant gets separated from the herd during a rainstorm…','A wild horse refuses to trust anyone — until a quiet girl shows up…']},
+    {id:'pack_sports_v',name:'Sports Stars',icon:'⚽',type:'setting_pack',cost:60,desc:'3 sports story starters',settings:['A 9-year-old gets her first shot at the championship game…','Best friends end up on opposite teams in the finals…','A kid who has never played basketball joins a team of experts…']},
+    {id:'custom_sidekick',name:'Custom Sidekick',icon:'🤝',type:'hero_name',cost:60,desc:'Name the sidekick in every story'},
+  ],
+};
+
+const THEMES={
+  default:{name:'Default',icon:'🎨',color:'#5b7ff5',bodyClass:'',vars:{'--bg':'#0f1117','--surface':'#1a1d27','--surface2':'#22263a','--border':'#2e3352','--accent':'#5b7ff5','--text':'#e8eaf0','--text2':'#8b92b3'}},
+  theme_hacker:{name:'Hacker Mode',icon:'💻',color:'#00e676',bodyClass:'th-hacker',vars:{'--bg':'#020804','--surface':'#041008','--surface2':'#071c0e','--border':'#0d3a18','--accent':'#00e676','--text':'#a0ffb0','--text2':'#3dbb70'}},
+  theme_ocean:{name:'Ocean Deep',icon:'🌊',color:'#00b4d8',bodyClass:'th-ocean',vars:{'--bg':'#020c18','--surface':'#041624','--surface2':'#062034','--border':'#0a3a60','--accent':'#00b4d8','--text':'#c0e8f8','--text2':'#4a98c0'}},
+  theme_space:{name:'Space Nebula',icon:'🪐',color:'#c77dff',bodyClass:'th-space',vars:{'--bg':'#06040f','--surface':'#0e0820','--surface2':'#160c2e','--border':'#2a1456','--accent':'#c77dff','--text':'#e8d8ff','--text2':'#8060b0'}},
+  theme_dino:{name:'Dino World',icon:'🦖',color:'#52b788',bodyClass:'',vars:{'--bg':'#071a0d','--surface':'#0d2614','--surface2':'#12301a','--border':'#1a5028','--accent':'#52b788','--text':'#c8f0d8','--text2':'#4a8860'}},
+  theme_hero:{name:'Superhero City',icon:'🦸',color:'#ef4444',bodyClass:'',vars:{'--bg':'#150404','--surface':'#220808','--surface2':'#2e0e0e','--border':'#5a1414','--accent':'#ef4444','--text':'#ffd8d8','--text2':'#b05050'}},
+  theme_sunny:{name:'Sunny Day',icon:'☀️',color:'#ff9f1c',bodyClass:'',vars:{'--bg':'#150e02','--surface':'#221602','--surface2':'#2e1e04','--border':'#5a3c08','--accent':'#ff9f1c','--text':'#fff0c8','--text2':'#b07830'}},
+};
+
+// Avatar item databases
+const AV_HAT={
+  hat_wizard:{id:'hat_wizard',name:'Wizard Hat',icon:'🧙',cost:80,svg:`<polygon points="60,14 38,46 82,46" fill="#7c3aed"/><ellipse cx="60" cy="46" rx="26" ry="7" fill="#5b21b6"/><circle cx="54" cy="30" r="2.5" fill="#fbbf24"/><circle cx="67" cy="38" r="1.5" fill="#a78bfa"/>`},
+  hat_crown:{id:'hat_crown',name:'Gold Crown',icon:'👑',cost:120,svg:`<polygon points="36,48 36,26 48,38 60,22 72,38 84,26 84,48" fill="#fbbf24" stroke="#d97706" stroke-width="1.5"/><circle cx="48" cy="27" r="3.5" fill="#ef4444"/><circle cx="60" cy="23" r="3.5" fill="#3b82f6"/><circle cx="72" cy="27" r="3.5" fill="#10b981"/>`},
+  hat_cap:{id:'hat_cap',name:'Baseball Cap',icon:'🧢',cost:50,svg:`<path d="M35,46 Q60,22 85,46 Z" fill="#ef4444"/><ellipse cx="60" cy="47" rx="28" ry="7" fill="#dc2626"/><rect x="80" y="42" width="24" height="7" rx="3.5" fill="#b91c1c"/><circle cx="60" cy="36" r="3" fill="white"/>`},
+  hat_space:{id:'hat_space',name:'Space Helmet',icon:'🪖',cost:100,svg:`<ellipse cx="60" cy="44" rx="31" ry="34" fill="rgba(148,163,184,.14)" stroke="#94a3b8" stroke-width="2.5"/><ellipse cx="60" cy="43" rx="23" ry="26" fill="rgba(186,230,253,.12)"/><circle cx="50" cy="38" r="3" fill="rgba(255,255,255,.35)"/>`},
+  hat_graduation:{id:'hat_graduation',name:'Grad Cap',icon:'🎓',cost:90,svg:`<polygon points="60,18 30,38 90,38" fill="#1e293b"/><rect x="30" y="36" width="60" height="9" rx="2" fill="#334155"/><line x1="86" y1="36" x2="94" y2="54" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round"/><circle cx="94" cy="56" r="5" fill="#fbbf24"/>`},
+  hat_pirate:{id:'hat_pirate',name:'Pirate Hat',icon:'🏴‍☠️',cost:70,svg:`<path d="M34,48 Q36,20 60,18 Q84,20 86,48 Z" fill="#1e293b"/><rect x="30" y="46" width="60" height="9" rx="3" fill="#111827"/><path d="M52,32 L55,42 L60,32 L65,42 L68,32" fill="none" stroke="white" stroke-width="2" stroke-linejoin="round"/>`},
+};
+const AV_OUTFIT={
+  outfit_cape:{id:'outfit_cape',name:'Hero Cape',icon:'🦸',cost:100,svg:`<path d="M43,82 L16,158 L104,158 L77,82 Z" fill="#dc2626" opacity=".88"/><path d="M43,82 L60,140 L77,82 Z" fill="#991b1b"/>`,bodyColor:'#4a5568'},
+  outfit_labcoat:{id:'outfit_labcoat',name:'Lab Coat',icon:'🥼',cost:80,svg:`<rect x="34" y="82" width="52" height="50" rx="10" fill="white" opacity=".93"/><rect x="52" y="84" width="16" height="32" fill="#f1f5f9"/><rect x="38" y="100" width="11" height="7" rx="2" fill="#93c5fd"/><rect x="71" y="100" width="11" height="7" rx="2" fill="#93c5fd"/>`,bodyColor:'#4a5568'},
+  outfit_superhero:{id:'outfit_superhero',name:'Superhero Suit',icon:'⚡',cost:110,svg:`<rect x="34" y="82" width="52" height="50" rx="10" fill="#1d4ed8"/><polygon points="60,94 51,110 60,108 69,110" fill="#fbbf24"/><line x1="34" y1="110" x2="86" y2="110" stroke="#1e40af" stroke-width="2"/>`,bodyColor:'#1d4ed8'},
+  outfit_jersey:{id:'outfit_jersey',name:'Sports Jersey',icon:'🏅',cost:60,svg:`<rect x="34" y="82" width="52" height="50" rx="10" fill="#059669"/><rect x="44" y="84" width="32" height="10" fill="#047857"/><text x="60" y="116" text-anchor="middle" font-family="sans-serif" font-size="16" font-weight="800" fill="white">23</text>`,bodyColor:'#059669'},
+  outfit_ninja:{id:'outfit_ninja',name:'Ninja Suit',icon:'🥷',cost:90,svg:`<rect x="34" y="82" width="52" height="50" rx="10" fill="#111827"/><rect x="34" y="82" width="52" height="50" rx="10" fill="none" stroke="#374151" stroke-width="2"/><path d="M34,110 Q60,107 86,110" stroke="#4b5563" stroke-width="2.5" fill="none"/>`,bodyColor:'#111827'},
+};
+const AV_ACC={
+  acc_glasses:{id:'acc_glasses',name:'Cool Glasses',icon:'🕶️',cost:40,svg:`<circle cx="49" cy="57" r="9" fill="rgba(0,0,0,.55)" stroke="#1a202c" stroke-width="2"/><circle cx="71" cy="57" r="9" fill="rgba(0,0,0,.55)" stroke="#1a202c" stroke-width="2"/><line x1="58" y1="57" x2="62" y2="57" stroke="#1a202c" stroke-width="2.5"/><line x1="31" y1="56" x2="40" y2="57" stroke="#1a202c" stroke-width="2"/><line x1="80" y1="57" x2="89" y2="56" stroke="#1a202c" stroke-width="2"/>`},
+  acc_heart:{id:'acc_heart',name:'Heart Glasses',icon:'🩷',cost:55,svg:`<path d="M40,57 Q40,49 49,49 Q58,49 58,57 Q58,63 49,69 Q40,63 40,57Z" fill="none" stroke="#ec4899" stroke-width="2.5"/><path d="M62,57 Q62,49 71,49 Q80,49 80,57 Q80,63 71,69 Q62,63 62,57Z" fill="none" stroke="#ec4899" stroke-width="2.5"/><line x1="58" y1="57" x2="62" y2="57" stroke="#ec4899" stroke-width="2.5"/><line x1="31" y1="56" x2="40" y2="57" stroke="#ec4899" stroke-width="2"/><line x1="80" y1="57" x2="89" y2="56" stroke="#ec4899" stroke-width="2"/>`},
+  acc_shield:{id:'acc_shield',name:'Shield',icon:'🛡️',cost:70,svg:`<polygon points="14,88 14,114 27,122 40,114 40,88" fill="#3b82f6" stroke="#1d4ed8" stroke-width="2"/><line x1="27" y1="91" x2="27" y2="119" stroke="#93c5fd" stroke-width="2"/><line x1="17" y1="103" x2="37" y2="103" stroke="#93c5fd" stroke-width="2"/>`},
+  acc_wand:{id:'acc_wand',name:'Magic Wand',icon:'🪄',cost:60,svg:`<line x1="98" y1="94" x2="116" y2="72" stroke="#8b5cf6" stroke-width="3" stroke-linecap="round"/><circle cx="118" cy="70" r="7" fill="#fbbf24"/><circle cx="118" cy="70" r="3.5" fill="white"/><circle cx="112" cy="78" r="2" fill="#fbbf24" opacity=".5"/>`},
+  acc_backpack:{id:'acc_backpack',name:'Backpack',icon:'🎒',cost:50,svg:`<rect x="76" y="86" width="22" height="32" rx="5" fill="#7c3aed"/><rect x="78" y="84" width="18" height="7" rx="3.5" fill="#6d28d9"/><rect x="78" y="100" width="18" height="12" rx="3" fill="#6d28d9"/><line x1="83" y1="86" x2="83" y2="118" stroke="#5b21b6" stroke-width="1.5"/>`},
+};
+const AV_PET={
+  pet_dragon:{id:'pet_dragon',name:'Dragon',icon:'🐉',cost:150,svg:`<g transform="translate(0,108)"><ellipse cx="20" cy="18" rx="16" ry="12" fill="#10b981"/><circle cx="20" cy="9" r="10" fill="#10b981"/><circle cx="15" cy="6" r="2.5" fill="#1a202c"/><circle cx="25" cy="6" r="2.5" fill="#1a202c"/><circle cx="15.5" cy="5" r="1" fill="white"/><circle cx="25.5" cy="5" r="1" fill="white"/><polygon points="13,2 16,11 20,3" fill="#059669"/><polygon points="20,3 24,11 27,2" fill="#059669"/><path d="M14,13 Q20,17 26,13" stroke="#1a202c" stroke-width="1.5" fill="none"/><ellipse cx="8" cy="17" rx="5" ry="9" fill="#059669" transform="rotate(-25,8,17)"/></g>`},
+  pet_cat:{id:'pet_cat',name:'Cat',icon:'🐱',cost:100,svg:`<g transform="translate(0,110)"><ellipse cx="20" cy="18" rx="15" ry="11" fill="#fbbf24"/><circle cx="20" cy="9" r="11" fill="#fbbf24"/><polygon points="11,3 14,13 8,13" fill="#fbbf24"/><polygon points="29,3 26,13 32,13" fill="#fbbf24"/><circle cx="15" cy="8" r="2.5" fill="#1a202c"/><circle cx="25" cy="8" r="2.5" fill="#1a202c"/><circle cx="15.5" cy="7" r="1" fill="white"/><circle cx="25.5" cy="7" r="1" fill="white"/><ellipse cx="20" cy="11" rx="2" ry="1.5" fill="#ec4899"/><line x1="12" y1="12" x2="5" y2="11" stroke="#92400e" stroke-width="1"/><line x1="12" y1="13" x2="5" y2="13" stroke="#92400e" stroke-width="1"/><line x1="28" y1="12" x2="35" y2="11" stroke="#92400e" stroke-width="1"/><line x1="28" y1="13" x2="35" y2="13" stroke="#92400e" stroke-width="1"/></g>`},
+  pet_robot:{id:'pet_robot',name:'Robot Dog',icon:'🤖',cost:130,svg:`<g transform="translate(0,108)"><rect x="8" y="12" width="26" height="20" rx="4" fill="#64748b"/><rect x="10" y="8" width="22" height="16" rx="4" fill="#94a3b8"/><circle cx="16" cy="14" r="3" fill="#38bdf8"/><circle cx="26" cy="14" r="3" fill="#38bdf8"/><circle cx="16" cy="14" r="1.5" fill="#0284c7"/><circle cx="26" cy="14" r="1.5" fill="#0284c7"/><rect x="14" y="20" width="14" height="3" rx="1.5" fill="#475569"/><rect x="6" y="24" width="6" height="14" rx="2" fill="#64748b"/><rect x="30" y="24" width="6" height="14" rx="2" fill="#64748b"/><rect x="30" y="6" width="4" height="10" rx="2" fill="#94a3b8"/><circle cx="32" cy="5" r="3" fill="#f43f5e"/></g>`},
+  pet_turtle:{id:'pet_turtle',name:'Turtle',icon:'🐢',cost:80,svg:`<g transform="translate(0,114)"><ellipse cx="20" cy="16" rx="16" ry="12" fill="#16a34a"/><ellipse cx="20" cy="16" rx="12" ry="9" fill="#15803d"/><line x1="14" y1="12" x2="14" y2="21" stroke="#166534" stroke-width="1.5"/><line x1="20" y1="12" x2="20" y2="21" stroke="#166534" stroke-width="1.5"/><line x1="26" y1="12" x2="26" y2="21" stroke="#166534" stroke-width="1.5"/><line x1="10" y1="16" x2="30" y2="16" stroke="#166534" stroke-width="1.5"/><circle cx="20" cy="5" r="7" fill="#16a34a"/><circle cx="17" cy="4" r="1.5" fill="#1a202c"/><circle cx="23" cy="4" r="1.5" fill="#1a202c"/><ellipse cx="8" cy="20" rx="5" ry="4" fill="#15803d"/><ellipse cx="32" cy="20" rx="5" ry="4" fill="#15803d"/></g>`},
+};
+const AV_BG={
+  bg_space:{id:'bg_space',name:'Space Station',icon:'🚀',cost:90,svg:`<circle cx="15" cy="20" r="1.5" fill="white" opacity=".6"/><circle cx="105" cy="35" r="1" fill="white" opacity=".5"/><circle cx="30" cy="60" r="1" fill="white" opacity=".4"/><circle cx="90" cy="15" r="2" fill="white" opacity=".7"/><circle cx="55" cy="10" r="1" fill="white" opacity=".5"/><circle cx="115" cy="75" r="1.5" fill="white" opacity=".6"/><circle cx="8" cy="90" r="1" fill="white" opacity=".4"/>`},
+  bg_underwater:{id:'bg_underwater',name:'Underwater',icon:'🐠',cost:80,svg:`<circle cx="15" cy="30" r="4" fill="none" stroke="rgba(147,197,253,.4)" stroke-width="1.5"/><circle cx="100" cy="60" r="3" fill="none" stroke="rgba(147,197,253,.3)" stroke-width="1.5"/><circle cx="60" cy="10" r="2" fill="none" stroke="rgba(147,197,253,.5)" stroke-width="1.5"/><circle cx="30" cy="100" r="5" fill="none" stroke="rgba(147,197,253,.3)" stroke-width="1.5"/><circle cx="110" cy="120" r="3" fill="none" stroke="rgba(147,197,253,.35)" stroke-width="1.5"/>`},
+  bg_treehouse:{id:'bg_treehouse',name:'Treehouse',icon:'🌳',cost:70,svg:`<rect x="2" y="100" width="14" height="58" rx="4" fill="#92400e" opacity=".45"/><circle cx="9" cy="92" r="18" fill="#15803d" opacity=".38"/><rect x="106" y="112" width="12" height="46" rx="4" fill="#92400e" opacity=".45"/><circle cx="112" cy="104" r="16" fill="#15803d" opacity=".38"/>`},
+  bg_bookshelf:{id:'bg_bookshelf',name:'Bookshelf',icon:'📚',cost:50,svg:`<rect x="0" y="128" width="120" height="5" rx="1" fill="#92400e" opacity=".38"/><rect x="5" y="100" width="10" height="28" rx="1" fill="#ef4444" opacity=".5"/><rect x="17" y="104" width="8" height="24" rx="1" fill="#3b82f6" opacity=".5"/><rect x="27" y="101" width="11" height="27" rx="1" fill="#10b981" opacity=".5"/><rect x="40" y="107" width="9" height="21" rx="1" fill="#f59e0b" opacity=".5"/><rect x="51" y="103" width="11" height="25" rx="1" fill="#8b5cf6" opacity=".5"/><rect x="0" y="55" width="120" height="5" rx="1" fill="#92400e" opacity=".38"/><rect x="75" y="28" width="10" height="27" rx="1" fill="#ec4899" opacity=".5"/><rect x="87" y="24" width="12" height="31" rx="1" fill="#f97316" opacity=".5"/><rect x="101" y="27" width="9" height="28" rx="1" fill="#06b6d4" opacity=".5"/>`},
+};
+const AV_TRAIL={
+  trail_sparkle:{id:'trail_sparkle',name:'Sparkle Trail',icon:'✨',cost:60,particles:['✨','⭐','💫','🌟']},
+  trail_lightning:{id:'trail_lightning',name:'Lightning',icon:'⚡',cost:80,particles:['⚡','💥','🌟','⚡']},
+  trail_stars:{id:'trail_stars',name:'Star Trail',icon:'🌟',cost:70,particles:['🌟','⭐','✨','💛','🌟']},
+};
+const ALL_AV_ITEMS=[...Object.values(AV_HAT),...Object.values(AV_OUTFIT),...Object.values(AV_ACC),...Object.values(AV_PET),...Object.values(AV_BG),...Object.values(AV_TRAIL)];
+function avItemById(id){return ALL_AV_ITEMS.find(i=>i.id===id)||null;}
+function avSlotOf(id){if(AV_HAT[id])return'hat';if(AV_OUTFIT[id])return'outfit';if(AV_ACC[id])return'accessory';if(AV_PET[id])return'pet';if(AV_BG[id])return'background';if(AV_TRAIL[id])return'trail';return null;}
+
+const LIFE_LESSONS = ['growth mindset','bouncing back from failure','embrace discomfort','patience and delayed gratification','controlling what you can control','honesty when it\'s hard','doing the right thing when no one is watching','owning your mistakes','keeping your word','standing up for others','seeing things from someone else\'s perspective','being a good teammate','kindness isn\'t weakness','speak up even when your voice shakes','leadership means serving others','take initiative','it\'s okay to be different','hard work compounds over time','small daily choices shape who you become','gratitude shifts your perspective','you don\'t have to be the best — just keep getting better'];
+
+const API_KEY_KEY='gio_anthropic_key', ACTIVE_CHILD_KEY='gio_app_active_child', MODEL='claude-opus-4-8';
+
+// ─── State helpers ─────────────────────────────────────────────────────────────
+function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
+function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
+function saveState(p,st){try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}}
+function loadApiKey(){return localStorage.getItem(API_KEY_KEY)||'';}
+function saveApiKey(k){localStorage.setItem(API_KEY_KEY,k);}
+function loadActiveChild(){return PROFILES[localStorage.getItem(ACTIVE_CHILD_KEY)]||PROFILES.gio;}
+function saveActiveChild(id){localStorage.setItem(ACTIVE_CHILD_KEY,id);}
+
+// ─── Format & Level helpers ────────────────────────────────────────────────────
+function getFormatForDate(d){const day=d.getDay();if(day===1||day===3||day===5)return'Choose-Your-Path';if(day===2||day===4||day===6)return'Detective';return getISOWeek(d)%2===0?'Choose-Your-Path':'Detective';}
+function getISOWeek(d){const u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const dn=u.getUTCDay()||7;u.setUTCDate(u.getUTCDate()+4-dn);const y=new Date(Date.UTC(u.getUTCFullYear(),0,1));return Math.ceil((((u-y)/86400000)+1)/7);}
+
+function computeLevelChanges(state,score,total,pname){
+  total=total||5;
+  const c={readingLevel:state.readingLevel,mathLevel:state.mathLevel,readingConsec5:state.readingConsec5||0,readingConseqLow:state.readingConseqLow||0,mathConsec5:state.mathConsec5||0,mathConseqLow:state.mathConseqLow||0};
+  const ann=[],meta={readingLevelUp:false,mathLevelUp:false};
+  const low=Math.ceil(total*0.55);
+  let rc5=c.readingConsec5,rcL=c.readingConseqLow;
+  if(score===total){rc5++;rcL=0;}else if(score<low){rcL++;rc5=0;}else{rc5=0;rcL=0;}
+  if(rc5>=2){c.readingLevel=Math.round((state.readingLevel+0.1)*10)/10;rc5=0;meta.readingLevelUp=true;ann.push(`${pname} moved up to ${c.readingLevel.toFixed(1)} in reading — earned it.`);}
+  c.readingConsec5=rc5;c.readingConseqLow=rcL;
+  let mc5=c.mathConsec5,mcL=c.mathConseqLow;
+  if(score===total){mc5++;mcL=0;}else if(score<low){mcL++;mc5=0;}else{mc5=0;mcL=0;}
+  if(mc5>=2){c.mathLevel=Math.round((state.mathLevel+0.1)*10)/10;mc5=0;meta.mathLevelUp=true;ann.push(`Math is moving up to ${c.mathLevel.toFixed(1)}. Keep it going.`);}
+  c.mathConsec5=mc5;c.mathConseqLow=mcL;
+  return{changes:c,announcements:ann,meta};
+}
+
+// ─── Gamification ─────────────────────────────────────────────────────────────
+// Points: correct no hints=10, hint1=7, hint2=4, hint3=1, wrong=0
+function pointsForAnswer(correct,hintsUsed){if(!correct)return 0;return[10,7,4,1][Math.min(hintsUsed,3)]||0;}
+function checkBadges(state,sess){return ALL_BADGES.filter(b=>!(state.badges||[]).includes(b.id)&&b.check(state,sess)).map(b=>b.id);}
+function applyTheme(id){
+  const t=THEMES[id]||THEMES.default;
+  const r=document.documentElement;
+  // Clear all theme body classes first
+  document.body.classList.remove(...Object.values(THEMES).map(x=>x.bodyClass).filter(Boolean));
+  // Apply vars
+  Object.entries(THEMES.default.vars).forEach(([k])=>r.style.removeProperty(k));
+  if(t.vars)Object.entries(t.vars).forEach(([k,v])=>r.style.setProperty(k,v));
+  if(t.bodyClass)document.body.classList.add(t.bodyClass);
+}
+function renderAvatar(eq,size){
+  size=size||160;const sc=size/160;
+  eq=eq||{};
+  const bc=(AV_OUTFIT[eq.outfit]?.bodyColor)||'#4a5568';
+  const bgSvg=(AV_BG[eq.background]?.svg)||'';
+  const hatSvg=(AV_HAT[eq.hat]?.svg)||'';
+  const petSvg=(AV_PET[eq.pet]?.svg)||'';
+  const accSvg=(AV_ACC[eq.accessory]?.svg)||'';
+  const outfitData=AV_OUTFIT[eq.outfit];
+  const capeSvg=outfitData&&eq.outfit==='outfit_cape'?outfitData.svg:'';
+  const fOutfitSvg=outfitData&&eq.outfit!=='outfit_cape'?outfitData.svg:'';
+  const w=Math.round(120*sc),h=size;
+  return`<svg viewBox="0 0 120 160" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" class="avatar-wrap">
+<rect width="120" height="160" rx="12" fill="var(--surface2)"/>${bgSvg}
+${petSvg}${capeSvg}
+<rect x="38" y="126" width="18" height="26" rx="5" fill="#334155"/>
+<rect x="64" y="126" width="18" height="26" rx="5" fill="#334155"/>
+<ellipse cx="47" cy="154" rx="13" ry="5" fill="#1e293b"/>
+<ellipse cx="73" cy="154" rx="13" ry="5" fill="#1e293b"/>
+<rect x="10" y="85" width="24" height="34" rx="10" fill="${bc}"/>
+<rect x="86" y="85" width="24" height="34" rx="10" fill="${bc}"/>
+<rect x="34" y="82" width="52" height="48" rx="10" fill="${bc}"/>
+${fOutfitSvg}
+<circle cx="22" cy="119" r="9" fill="#fed7aa"/>
+<circle cx="98" cy="119" r="9" fill="#fed7aa"/>
+<rect x="50" y="74" width="20" height="12" fill="#fed7aa"/>
+<circle cx="60" cy="52" r="27" fill="#fed7aa"/>
+<circle cx="32" cy="52" r="8" fill="#fed7aa"/>
+<circle cx="88" cy="52" r="8" fill="#fed7aa"/>
+<circle cx="51" cy="48" r="5" fill="#1a202c"/>
+<circle cx="69" cy="48" r="5" fill="#1a202c"/>
+<circle cx="52.5" cy="46.5" r="2" fill="white"/>
+<circle cx="70.5" cy="46.5" r="2" fill="white"/>
+<path d="M50,61 Q60,68 70,61" stroke="#1a202c" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+<ellipse cx="60" cy="56" rx="3" ry="2" fill="#f6ad55" opacity=".45"/>
+<circle cx="43" cy="59" r="5.5" fill="#fc8181" opacity=".28"/>
+<circle cx="77" cy="59" r="5.5" fill="#fc8181" opacity=".28"/>
+${accSvg}${hatSvg}
+</svg>`;
+}
+
+// ─── API ──────────────────────────────────────────────────────────────────────
+async function callClaude(messages,system,maxTokens=2000){
+  const key=loadApiKey();if(!key)throw new Error('No API key set.');
+  const fp=fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODEL,max_tokens:maxTokens,system,messages})}).then(async r=>{if(!r.ok){const e=await r.text();throw new Error(`API ${r.status}: ${e}`);}return r.json();});
+  const tp=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Request timed out (60s). Please retry.')),60000));
+  const d=await Promise.race([fp,tp]);
+  return d.content[0].text;
+}
+
+// ─── Grading: client-side first, AI fallback ──────────────────────────────────
+function normalizeText(s){return String(s||'').toLowerCase().replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim();}
+
+function gradeLocally(studentAnswer,variants){
+  const sa=normalizeText(studentAnswer);
+  if(!sa||sa.length<1)return false;
+  return variants.some(v=>{
+    const vn=normalizeText(v);
+    if(!vn)return false;
+    if(sa.includes(vn))return true;
+    if(vn.length<=20&&vn.includes(sa))return true;
+    // word overlap: 70% of meaningful words in variant appear in answer
+    const words=vn.split(' ').filter(w=>w.length>2);
+    if(words.length>=2){const hits=words.filter(w=>sa.includes(w)).length;return hits/words.length>=0.7;}
+    return false;
+  });
+}
+
+async function gradeAnswer(question,studentAnswer,variants,fullAnswer,isMath){
+  // Try local first
+  if(gradeLocally(studentAnswer,variants))return true;
+  // AI fallback — very lenient, only use to catch "close but worded differently"
+  try{
+    const prompt=`You are grading a ${isMath?'math':'reading comprehension'} answer from a child.
+
+Question: ${question}
+Correct answer: ${fullAnswer}
+Acceptable phrasings: ${variants.join(' | ')}
+Child's answer: "${studentAnswer}"
+
+${isMath?'Accept if the correct number/calculation is present, regardless of phrasing.':'Be VERY lenient. Accept if the child clearly knows the right fact, even if phrased differently or incompletely. Only mark wrong if the key fact is simply not there or is factually incorrect.'}
+
+Reply ONLY with: {"correct":true} or {"correct":false}`;
+    const raw=await callClaude([{role:'user',content:prompt}],'You grade children\'s answers very leniently. Return only valid JSON.',100);
+    const r=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());
+    return!!r.correct;
+  }catch{return false;}
+}
+
+// ─── Prompts ──────────────────────────────────────────────────────────────────
+function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName}){
+  const isCYP=format==='Choose-Your-Path';
+  const part1Words=Math.round(wordLength*0.6);
+  const formatInst=isCYP
+    ?`FORMAT: Choose-Your-Path.\nWrite the story up to a decision point (~${part1Words} words). End with EXACTLY:\nOption A: [description]\nOption B: [description]\nSTOP there.`
+    :`FORMAT: Detective Mystery.\nBuild a mystery solvable only through careful reading. The math situation is the key clue. Resolve it by the end. ~${wordLength} words.`;
+  const heroNote=heroName?`\nUse "${heroName}" as the main character or sidekick name.`:'';
+  const contNote=storySummary?`\nCONTINUITY (only if topic asks to continue): ${storySummary}`:'';
+  return `You are writing a story for ${profile.name}, age ${profile.age}, entering ${profile.grade} grade.
+
+STYLE: ${profile.sentenceComplexity}${heroNote}
+
+MATH SITUATION — CRITICAL:
+- Embed exactly ONE math situation matched to level ${mathLevel.toFixed(1)} in "${mathDomain}"
+- Give the reader all numbers needed to solve it
+- DO NOT solve it, show the steps, or reveal the answer anywhere in the story
+- A character may notice or face the problem — they must NOT work through it or say the answer
+
+LIFE LESSON: "${lifeLesson}" — shown through character ACTIONS only, never stated
+
+${formatInst}
+
+TOPIC: ${topic}${contNote}
+
+Start the story immediately — no title headers, no preamble.`;
+}
+
+function buildContinuationPrompt({firstPart,choice,profile,readingLevel,mathLevel,mathDomain,lifeLesson,wordLength}){
+  return `Continue this Choose-Your-Path story for ${profile.name}, age ${profile.age}.
+STYLE: ${profile.sentenceComplexity}
+Math domain: ${mathDomain} at level ${mathLevel.toFixed(1)} — DO NOT solve or reveal the math answer.
+Life lesson: "${lifeLesson}" through actions only.
+
+First part (do not repeat):
+---
+${firstPart}
+---
+Choice made: "${choice}"
+
+Write the continuation (~${Math.round(wordLength*0.4)} words). End the story satisfyingly.`;
+}
+
+function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ}){
+  const n=numQ||profile.numQuestions;
+  return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)}.
+
+Story:
+---
+${story}
+---
+Math domain: ${mathDomain} | Life lesson theme: "${lifeLesson}"
+
+═══════════════════════════════════════════
+CRITICAL RULES — READ CAREFULLY:
+═══════════════════════════════════════════
+
+QUESTION STRUCTURE:
+✗ NEVER use "and" to join two questions into one
+✗ NEVER ask about feelings, emotions, or motivations ("how did he feel", "why did she feel")
+✗ NEVER ask inference questions — only facts directly stated in the story
+✓ Every question must have ONE specific answer clearly stated in the story text
+✓ Use these templates (vary them):
+   - "What did [name] [do/say/find/use] when [specific moment]?"
+   - "Where was [name] when [specific moment]?"
+   - "What [object/number/name/place] did [name] [have/find/need/use]?"
+   - "What happened right after [specific moment]?"
+   - "Who [did specific action]?"
+   - "Why did the author describe [specific detail]?" (author's purpose — max 1 of these)
+
+MATH QUESTION (exactly 1, type "math"):
+   - Ask ${profile.name} to calculate the answer himself
+   - Example: "What is the total if [story numbers]? Calculate it."
+   - full_answer must show the calculation steps and final number
+
+ACCEPTABLE VARIANTS (critical for fair grading):
+   For every question, list 4-8 different ways a child might correctly express the answer.
+   Think of short answers, long answers, different word choices, number formats.
+   Example for "how many gallons": ["4 and a quarter", "4 1/4", "4.25", "four and a quarter gallons", "four and a quarter", "4¼"]
+
+HINTS:
+   hint1: Name the EXACT story moment — "[Character] [specific action] [specific location in story]"
+          Example: "Look at the part where Marco reads Mrs. Patel's note in the garden shed"
+          NOT: "reread the middle section"
+   hint2: Ask a focused yes/no or fill-in question about that exact moment — still no answer
+   hint3_partial: First half of the answer, cut mid-sentence
+
+Return a JSON array of exactly ${n} objects:
+[{"q":"...","type":"math|lesson|general","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}]
+
+- Exactly 1 type "math"
+- Exactly 1 type "lesson" (about what a character DID, not how they felt)
+- Rest type "general"
+- Return ONLY the JSON array, nothing else`;
+}
+
+function buildClarifyPrompt(story,question,clarifyQ,profile){
+  return `You are a helpful tutor for ${profile.name}, age ${profile.age}.
+
+Story context:
+---
+${story}
+---
+
+Question ${profile.name} is working on: "${question}"
+${profile.name} asked: "${clarifyQ}"
+
+Answer in 2-3 sentences — explain a word, a math concept (not the specific answer), or rephrase the question clearly. Do NOT give away the comprehension answer. End with a brief redirect back to the question.`;
+}
+
+function buildSummaryPrompt(story){return`Write a 3-4 sentence story summary for continuity. Include character names, setting, key events, ending. Return only the summary.\n\n${story}`;}
+
+// ─── App State ─────────────────────────────────────────────────────────────────
+let S={
+  screen:'setup',activeProfile:null,persistedState:null,
+  format:null,lifeLesson:null,mathDomain:null,topic:null,
+  firstPart:null,continuation:null,fullStory:null,
+  questions:null,answers:[],wrongAttempts:[],currentQ:0,score:0,
+  sessionDate:null,numQ:5,
+  clarifyVisible:false,clarifyText:'',clarifyResponse:null,clarifyLoading:false,
+  hintLevel:0,showFullAnswer:false,gradingLoading:false,gradingError:null,
+  correctFeedback:null,
+  loadingMsg:'',error:null,
+  reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,
+  levelAnnouncements:[],newBadges:[],expandedQDot:null,
+};
+function setState(patch){Object.assign(S,patch);render();}
+
+// ─── Render ────────────────────────────────────────────────────────────────────
+const SCREENS={setup:renderSetup,home:renderHome,loading:renderLoading,'story-cyp':renderStoryCYP,'story-detective':renderStoryDetective,decision:renderDecision,'continuation-loading':renderContinuationLoading,continuation:renderContinuation,questions:renderQuestions,wrapup:renderWrapup,'parent-review':renderParentReview,rewards:renderRewards,history:renderHistory,settings:renderSettings};
+function render(){document.getElementById('app').innerHTML=(SCREENS[S.screen]||renderSetup)();bindEvents();if(S.persistedState?.activeTheme)applyTheme(S.persistedState.activeTheme);}
+
+function renderSwitcher(){const id=(S.activeProfile||PROFILES.gio).id;return`<div class="child-switcher"><button class="child-tab${id==='gio'?' active':''}" id="swGio">Gio</button><button class="child-tab${id==='valentino'?' active':''}" id="swVal">Valentino</button></div>`;}
+
+// ─── Home ──────────────────────────────────────────────────────────────────────
+function renderSetup(){const key=loadApiKey();return`<div class="card" style="max-width:460px;margin:60px auto;"><h1 class="mb12">📚 Daily Reading & Math</h1><p class="text-muted mb16">Enter your Anthropic API key. Stored only in this browser.</p><label>Anthropic API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Sent only to Anthropic — never stored elsewhere.</p><div class="mt16"><button class="btn btn-primary btn-full btn-lg" id="setupBtn">Continue →</button></div>${S.error?`<div class="error-box mt12">${eh(S.error)}</div>`:''}</div>`;}
+
+function renderHome(){
+  const p=S.activeProfile,st=S.persistedState,today=new Date();
+  const format=getFormatForDate(today),domain=p.mathDomains[st.mathDomainIndex%p.mathDomains.length];
+  const todayStr=today.toDateString(),sessToday=st.lastSessionDate===todayStr?(st.sessionsCompletedToday||0):0;
+  const storeItems=STORE[p.id]||[],packs=storeItems.filter(i=>i.type==='setting_pack'&&(st.unlockedItems||[]).includes(i.id));
+  const anns=S.levelAnnouncements||[],bbs=S.newBadges||[];
+  const banners=anns.map(a=>`<div class="level-announce mb8">${eh(a)}</div>`).join('');
+  const badgeBanners=bbs.map(bid=>{const b=ALL_BADGES.find(x=>x.id===bid);return b?`<div class="level-announce mb8">${b.icon} New badge unlocked: <strong>${b.name}</strong></div>`:''}).join('');
+  if(anns.length>0)setTimeout(()=>{S.levelAnnouncements=[];},50);
+  if(bbs.length>0)setTimeout(()=>{S.newBadges=[];},50);
+  return banners+badgeBanners+`
+  <div class="top-nav">${renderSwitcher()}<div class="top-nav-right"><span class="points-pill" id="rewardsNavBtn">⭐ ${st.points||0} pts</span></div></div>
+  <div class="session-hdr">
+    <div style="display:flex;align-items:center;gap:14px;">${renderAvatar(st.avatarEquipped,72)}<div><h1>Hey ${eh(p.name)}! 👋</h1><p class="text-muted">${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p></div></div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;"><span class="tag tag-accent">Reading ${st.readingLevel.toFixed(1)}</span><span class="tag tag-accent">Math ${st.mathLevel.toFixed(1)}</span>${sessToday>0?`<span class="tag tag-success">${sessToday} done today</span>`:''}</div>
+  </div>
+  <div class="card mb12">
+    <div class="row mb12" style="gap:16px;"><div><label>Today's format</label><div class="bold">${format}</div></div><div><label>Math domain</label><div class="bold">${domain}</div></div></div>
+    <hr class="divider">
+    <h3 class="mb10">What's today's story about?</h3>
+    <p class="text-muted mb10" style="font-size:.88rem;">Pick a character and setting — or any idea.</p>
+    <label>Your idea</label>
+    <textarea id="topicInput" style="min-height:70px;" placeholder="e.g. A kid who finds a treasure map in an old library book…" rows="3"></textarea>
+    ${packs.length>0?`<div class="mt8"><p class="text-xs text-muted mb6">Unlocked story starters:</p><div style="display:flex;gap:6px;flex-wrap:wrap;">${packs.map(pk=>pk.settings.map((s,i)=>`<button class="btn btn-secondary text-xs" style="padding:4px 10px;flex:none;" onclick="document.getElementById('topicInput').value=\`${ea(s)}\`">${pk.icon} ${i+1}</button>`).join('')).join('')}</div></div>`:''}
+    <div class="row mt12">
+      <button class="btn btn-primary btn-lg" id="startNewBtn">Start new story →</button>
+      ${st.lastStorySummary?`<button class="btn btn-secondary" id="continueBtn">Continue last story</button>`:''}
+    </div>
+    ${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}
+  </div>
+  <div class="card card-sm mb12">
+    <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--text2);">
+      <span>📚 Reading streak: <strong style="color:var(--text)">${st.readingConsec5||0}/2</strong></span>
+      <span>🧮 Math streak: <strong style="color:var(--text)">${st.mathConsec5||0}/2</strong></span>
+      <span>🔥 Day streak: <strong style="color:var(--text)">${st.consecutiveStreak||0}</strong></span>
+      ${sessToday>0?`<span>✅ Today: <strong style="color:var(--text)">${sessToday}</strong></span>`:''}
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn btn-secondary text-sm" style="padding:7px 14px;" id="rewardsBtnHome">⭐ Rewards & Store</button>
+    <button class="btn btn-secondary text-sm" style="padding:7px 14px;" id="historyBtn">📋 Session History</button>
+    <button class="btn btn-secondary text-sm" style="padding:7px 14px;" id="settingsBtn">⚙ Settings</button>
+  </div>`;
+}
+
+function renderLoading(){return`<div class="loading-center"><div class="spinner"></div><p>${eh(S.loadingMsg||'Writing your story…')}</p><p class="text-muted text-sm mt8">Usually takes 20–40 seconds.</p></div>`;}
+
+function renderStoryDetective(){return`<div class="session-hdr"><div><h2>🔍 Your Story</h2><span class="tag tag-accent">Detective</span></div></div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${eh(S.fullStory||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg" id="readyForQBtn">Ready for questions →</button>`;}
+
+function renderStoryCYP(){return`<div class="session-hdr"><div><h2>📖 Choose Your Path</h2><span class="tag tag-accent">Decision ahead…</span></div></div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${eh(S.firstPart||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg" id="seenFirstPartBtn">I've read it — show me the choices →</button>`;}
+
+function renderDecision(){
+  const optA=extractOption(S.firstPart||'','A'),optB=extractOption(S.firstPart||'','B');
+  return`<div class="session-hdr"><div><h2>🤔 What do you choose?</h2><span class="tag">Choose Your Path</span></div></div>
+  <div class="card card-sm mb12"><p class="text-muted text-sm mb10">Pick one — or write your own choice below.</p>${optA?`<button class="option-btn" data-choice="${ea(optA)}" id="optABtn"><strong>Option A:</strong> ${eh(optA)}</button>`:''} ${optB?`<button class="option-btn" data-choice="${ea(optB)}" id="optBBtn"><strong>Option B:</strong> ${eh(optB)}</button>`:''}</div>
+  <div class="card card-sm"><label>Or type your own choice:</label><textarea id="customChoiceInput" style="min-height:54px;" placeholder="I choose…" rows="2"></textarea><div class="mt10"><button class="btn btn-primary" id="submitChoiceBtn">Go with this →</button></div></div>`;
+}
+
+function renderContinuationLoading(){return`<div class="loading-center"><div class="spinner"></div><p>Writing what happens next…</p></div>`;}
+
+function renderContinuation(){return`<div class="session-hdr"><div><h2>📖 The Story Continues…</h2><span class="tag tag-accent">Choose Your Path</span></div></div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text"><strong>— Part One —</strong>\n${eh(S.firstPart||'')}\n\n<strong>— You chose: ${eh((S.topic||{}).choice||'')} —</strong>\n\n${eh(S.continuation||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg mt8" id="readyForQBtn">Ready for questions →</button>`;}
+
+// ─── Questions Screen ──────────────────────────────────────────────────────────
+function renderQuestions(){
+  const qs=S.questions||[],qi=S.currentQ,q=qs[qi];
+  if(!q)return renderWrapup();
+  const total=qs.length,hl=S.hintLevel||0,showFull=S.showFullAnswer;
+  const sessionPts=(S.answers||[]).reduce((s,a)=>s+(a.pointsEarned||0),0);
+
+  // Progress dots
+  const dots=qs.map((_,i)=>{
+    if(i<qi){const a=S.answers[i];return`<div class="q-dot ${a?.correct?'q-dot-correct':'q-dot-wrong'}" data-qi="${i}" title="Q${i+1}: ${a?.correct?'Correct':'Incorrect'}">${i+1}</div>`;}
+    if(i===qi)return`<div class="q-dot q-dot-current">${i+1}</div>`;
+    return`<div class="q-dot q-dot-upcoming">${i+1}</div>`;
+  }).join('');
+
+  // Past Q detail popup
+  let qDetail='';
+  if(S.expandedQDot!==null&&S.expandedQDot<qi){
+    const dq=qs[S.expandedQDot],da=S.answers[S.expandedQDot];
+    qDetail=`<div class="q-review-popup"><div style="font-weight:600;margin-bottom:6px;">Q${S.expandedQDot+1}: ${eh(dq?.q||'')}</div><div>${da?.correct?'<span class="correct-tag">✓ CORRECT</span>':'<span class="wrong-tag">✗ INCORRECT</span>'}${da?.hintsUsed>0?` <span class="text-xs text-muted">(${da.hintsUsed} hint${da.hintsUsed>1?'s':''})</span>`:''}</div>${da?.userAnswer?`<div class="mt4 text-sm"><span class="text-muted">Answered:</span> ${eh(da.userAnswer)}</div>`:''}<div class="mt4 text-sm"><span class="text-muted">Full answer:</span> ${eh(dq?.full_answer||'')}</div></div>`;
+  }
+
+  // Wrong attempts for current question
+  const wrongAttempts=S.wrongAttempts||[];
+  const wrongHTML=wrongAttempts.map(wa=>`<div class="wrong-attempt"><div class="wrong-attempt-label">✗ Incorrect attempt</div><div>${eh(wa)}</div></div>`).join('');
+
+  return`<div class="session-hdr">
+    <div><h2>Question ${qi+1} of ${total}</h2><div class="text-muted text-sm">${S.score} correct so far</div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><span class="tag">${S.format}</span><span class="points-pill" id="rewardsNavBtn">⭐ ${(S.persistedState?.points||0)+sessionPts} pts</span></div>
+  </div>
+
+  <div class="card card-sm mb12">
+    <div class="q-dots">${dots}</div>
+    ${qDetail}
+  </div>
+
+  <div class="q-layout">
+    <!-- Story — left sticky column -->
+    <div class="q-story-col">
+      <div class="text-xs text-muted bold mb4">📖 Story</div>
+      <div class="story-panel"><div class="story-text">${eh(S.fullStory||'')}</div></div>
+    </div>
+
+    <!-- Question — right column -->
+    <div>
+      <div class="card">
+        <div style="font-size:1rem;font-weight:600;margin-bottom:14px;line-height:1.4;">${eh(q.q)}</div>
+
+        ${wrongHTML}
+
+        ${hl>=1&&!showFull?`<div class="hint-box mt10"><strong>Hint 1:</strong> ${eh(q.hint1)}</div>`:''}
+        ${hl>=2&&!showFull?`<div class="hint-box mt10"><strong>Hint 2:</strong> ${eh(q.hint2)}</div>`:''}
+        ${hl>=3&&!showFull?`<div class="hint-box mt10"><strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em></div>`:''}
+        ${showFull?`<div class="answer-box mt10"><strong>Full answer:</strong> ${eh(q.full_answer)}</div>`:''}
+
+        ${S.gradingError?`<div class="error-box mt10">${eh(S.gradingError)} <button class="btn btn-secondary mt8" style="padding:5px 12px;font-size:.82rem;" id="retryGradeBtn">Retry</button></div>`:''}
+
+        ${S.correctFeedback?`
+          <div class="correct-celebrate mt12">
+            <div class="celebrate-check">✓</div>
+            <div class="celebrate-pts">Correct!</div>
+            <div class="celebrate-bonus">+${S.correctFeedback.points} points</div>
+            <div class="celebrate-sub">${qi+1<total?'Moving to next question…':'Almost done…'}</div>
+          </div>
+        `:!showFull?`
+          <div class="mt12"><label>Your answer:</label>
+          <textarea id="answerInput" style="min-height:80px;" rows="3" placeholder="Type your answer here…"></textarea></div>
+          <div class="row mt10">
+            <button class="btn btn-primary" id="submitAnswerBtn" ${S.gradingLoading?'disabled':''}>${S.gradingLoading?'Checking…':'Submit answer'}</button>
+            ${hl<3?`<button class="btn btn-secondary" id="hintBtn" ${S.gradingLoading?'disabled':''}>Get a hint (${3-hl} left)</button>`:''}
+          </div>
+          ${hl>=3?`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`:''}
+        `:`<button class="btn btn-primary btn-full mt12" id="nextQBtn">Next ${qi+1<total?'question':'to results'} →</button>`}
+
+        <div class="clarify-section">
+          <button class="clarify-toggle" id="clarifyToggle">${S.clarifyVisible?'▼ Hide':'▶ Ask about a word, the math, or what this question is asking'}</button>
+          ${S.clarifyVisible?`
+            ${S.clarifyResponse?`<div class="clarify-response mb8">${eh(S.clarifyResponse)}</div>`:''}
+            <div class="clarify-form">
+              <textarea id="clarifyInput" style="min-height:46px;" placeholder="Ask anything…" rows="2">${eh(S.clarifyText||'')}</textarea>
+              <button class="btn btn-secondary" style="white-space:nowrap;align-self:flex-end;padding:8px 14px;" id="submitClarifyBtn" ${S.clarifyLoading?'disabled':''}>${S.clarifyLoading?'…':'Ask'}</button>
+            </div>`:''}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ─── Wrapup ───────────────────────────────────────────────────────────────────
+function renderWrapup(){
+  const score=S.score,total=(S.questions||[]).length;
+  const sessionPts=(S.answers||[]).reduce((s,a)=>s+(a.pointsEarned||0),0)+5;
+  const qSummary=(S.questions||[]).map((q,i)=>{
+    const a=S.answers[i];if(!a)return'';
+    return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">Q${i+1}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
+  }).join('');
+  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb20">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p><button class="btn btn-primary btn-lg" id="goParentReviewBtn">Parent review →</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
+}
+
+// ─── Parent Review ────────────────────────────────────────────────────────────
+function renderParentReview(){
+  const st=S.persistedState,p=S.activeProfile;
+  const rs=S.reviewScore!==null?S.reviewScore:S.score;
+  const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
+  const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
+  const numQ=S.numQ||p.numQuestions;
+  const{announcements}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},rs,numQ,p.name);
+  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
+}
+
+// ─── Rewards ──────────────────────────────────────────────────────────────────
+function renderRewards(){
+  const p=S.activeProfile,st=S.persistedState;
+  const pts=st.points||0;
+  const owned=st.unlockedItems||[];
+  const eq=st.avatarEquipped||{};
+
+  // Find cheapest unowned item across all categories
+  const allShop=[...(STORE[p.id]||[]),...ALL_AV_ITEMS];
+  const nextUnlock=allShop.filter(i=>!owned.includes(i.id)).sort((a,b)=>a.cost-b.cost)[0];
+  const ptsUntilNext=nextUnlock?Math.max(0,nextUnlock.cost-pts):0;
+
+  // Avatar section
+  const avatarHTML=renderAvatar(eq,140);
+  function avSlotRow(label,db,slot){
+    const none=`<span class="equip-chip${!eq[slot]?' active':''}" data-slot="${slot}" data-item="" id="equip_${slot}_none">None</span>`;
+    const chips=Object.values(db).map(item=>{
+      const isOwned=owned.includes(item.id);
+      const isActive=eq[slot]===item.id;
+      if(isOwned){
+        return`<span class="equip-chip${isActive?' active':''}" data-slot="${slot}" data-item="${item.id}" id="equip_${slot}_${item.id}">${item.icon} ${item.name}</span>`;
+      }
+      return`<span class="equip-chip locked" title="⭐ ${item.cost} pts to unlock">${item.icon} ${item.name} (${item.cost}pts)</span>`;
+    }).join('');
+    return`<div class="equip-slot-label">${label}</div><div class="equip-row">${none}${chips}</div>`;
+  }
+
+  // Theme switcher
+  const themeItems=STORE[p.id]?.filter(i=>i.type==='theme')||[];
+  const defaultChip=`<span class="theme-chip${!st.activeTheme?' active':''}" data-themeid="default" id="themeChip_default"><span class="theme-swatch" style="background:#5b7ff5"></span>Default</span>`;
+  const themeChips=themeItems.map(ti=>{
+    const t=THEMES[ti.id];
+    const isOwned=owned.includes(ti.id);
+    const isActive=st.activeTheme===ti.id;
+    if(isOwned){
+      return`<span class="theme-chip${isActive?' active':''}" data-themeid="${ti.id}" id="themeChip_${ti.id}"><span class="theme-swatch" style="background:${t?.color||'#5b7ff5'}"></span>${ti.name}</span>`;
+    }
+    return`<span class="theme-chip locked" title="⭐ ${ti.cost} pts"><span class="theme-swatch" style="background:${t?.color||'#888'}"></span>${ti.name} (${ti.cost}pts)</span>`;
+  }).join('');
+
+  // Other store items (packs, hero name — not themes)
+  const otherItems=(STORE[p.id]||[]).filter(i=>i.type!=='theme');
+  const otherHTML=otherItems.map(item=>{
+    const isOwned=owned.includes(item.id);
+    const canAfford=pts>=item.cost;
+    let action=isOwned?`<div class="text-xs text-success mt8">✓ Unlocked</div>`
+      :`<button class="btn btn-primary mt8" style="width:100%;font-size:.78rem;padding:5px;" data-itemid="${item.id}" id="buyBtn_${item.id}" ${!canAfford?'disabled':''}>${canAfford?'Buy':'Need '+(item.cost-pts)+' more pts'}</button>`;
+    return`<div class="store-card${isOwned?' owned':''}"><div style="font-size:1.4rem;">${item.icon}</div><div class="store-name">${item.name}</div><div class="store-desc">${item.desc}</div>${!isOwned?`<div class="store-price">⭐ ${item.cost} pts</div>`:''} ${action}</div>`;
+  }).join('');
+
+  // Avatar shop items
+  const avShopHTML=ALL_AV_ITEMS.map(item=>{
+    const isOwned=owned.includes(item.id);
+    const canAfford=pts>=item.cost;
+    const isActive=eq[avSlotOf(item.id)]===item.id;
+    let action='';
+    if(isOwned&&isActive)action=`<div class="text-xs text-accent mt6">✓ Equipped</div>`;
+    else if(isOwned)action=`<button class="btn btn-secondary mt6" style="width:100%;font-size:.76rem;padding:4px;" data-slot="${avSlotOf(item.id)}" data-item="${item.id}" id="equipBtn_${item.id}">Equip</button>`;
+    else action=`<button class="btn btn-primary mt6" style="width:100%;font-size:.76rem;padding:4px;" data-itemid="${item.id}" id="buyAvBtn_${item.id}" ${!canAfford?'disabled':''}>${canAfford?'Buy':'Need '+(item.cost-pts)+' more pts'}</button>`;
+    return`<div class="store-card${isOwned?' owned':''}"><div style="font-size:1.3rem;">${item.icon}</div><div class="store-name" style="font-size:.8rem;">${item.name}</div>${!isOwned?`<div class="store-price">⭐ ${item.cost}</div>`:''} ${action}</div>`;
+  }).join('');
+
+  const badgeHTML=ALL_BADGES.map(b=>{const earned=(st.badges||[]).includes(b.id);return`<div class="badge-card${earned?' earned':' locked'}"><div class="badge-icon">${b.icon}</div><div class="badge-name">${b.name}</div><div class="badge-desc">${earned?'✓ Earned':b.desc}</div></div>`;}).join('');
+
+  return`<div class="session-hdr"><div><h2>⭐ ${eh(p.name)}'s Rewards</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>
+
+  <div class="card text-center" style="padding:20px;">
+    <div style="display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap;">
+      ${avatarHTML}
+      <div>
+        <div style="font-size:2.6rem;font-weight:800;color:var(--warning);">⭐ ${pts}</div>
+        <div class="text-muted text-sm mt4">total points</div>
+        ${nextUnlock?`<div class="mt8 text-sm">🎯 <strong>${ptsUntilNext} pts</strong> until: <strong>${nextUnlock.name}</strong></div>`:'<div class="text-success text-sm mt8">🏆 Everything unlocked!</div>'}
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 class="mb4">🎨 Customize Your Avatar</h3>
+    <p class="text-xs text-muted mb8">Tap an item to equip it. Locked items show their price.</p>
+    ${avSlotRow('🎩 Hat',AV_HAT,'hat')}
+    ${avSlotRow('👕 Outfit',AV_OUTFIT,'outfit')}
+    ${avSlotRow('✨ Accessory',AV_ACC,'accessory')}
+    ${avSlotRow('🐾 Pet',AV_PET,'pet')}
+    ${avSlotRow('🖼 Background',AV_BG,'background')}
+    ${avSlotRow('💫 Trail Effect',AV_TRAIL,'trail')}
+  </div>
+
+  <div class="card">
+    <h3 class="mb8">🎨 Themes</h3>
+    <p class="text-xs text-muted mb4">Owned themes are clickable. Buy locked ones in the Avatar Shop below.</p>
+    <div class="theme-grid">${defaultChip}${themeChips}</div>
+  </div>
+
+  <div class="card"><h3 class="mb4">🛍 Avatar Shop</h3><p class="text-xs text-muted mb10">Buy items to unlock them for your avatar</p><div class="store-grid">${avShopHTML}</div></div>
+
+  ${otherItems.length>0?`<div class="card"><h3 class="mb4">🛒 Story Packs & Extras</h3><div class="store-grid">${otherHTML}</div></div>`:''}
+
+  <div class="card"><h3 class="mb4">🏅 Badge Wall</h3><p class="text-xs text-muted mb10">${(st.badges||[]).length} of ${ALL_BADGES.length} earned</p><div class="badge-grid">${badgeHTML}</div></div>`;
+}
+
+function renderHistory(){
+  const p=S.activeProfile,st=S.persistedState;
+  const history=(st.sessionHistory||[]).slice().reverse();
+  const histHTML=history.length===0?'<p class="text-muted text-sm">No sessions completed yet.</p>':history.map(sess=>`<div class="history-session"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;"><div><div class="bold text-sm">${eh(sess.date)}</div><div class="text-xs text-muted">${eh(sess.format)} · ${eh(sess.domain)}</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="tag${sess.score===sess.total?' tag-success':''}">${sess.score}/${sess.total}</span><span class="text-xs text-warning">+${sess.pointsEarned||0} pts</span></div></div><div class="mt8">${(sess.questions||[]).map((q,qi)=>`<div class="history-q"><div style="display:flex;justify-content:space-between;gap:8px;"><div class="text-sm"><span class="bold">Q${qi+1}:</span> ${eh(q.q)}</div><div>${q.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${q.hintsUsed>0?` <span class="text-xs text-muted">${q.hintsUsed}h</span>`:''}</div></div>${q.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(q.userAnswer)}</div>`:''}<div class="text-xs mt4 text-muted">Answer: ${eh(q.fullAnswer)}</div></div>`).join('')}</div></div>`).join('');
+  return`<div class="session-hdr"><div><h2>📋 ${eh(p.name)}'s Session History</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>${histHTML}`;
+}
+
+function renderSettings(){
+  const p=S.activeProfile,st=S.persistedState,wl=st.storyWordLength||p.defaultStoryWords,key=loadApiKey();
+  const nq=st.numQuestions||p.numQuestions;
+  return`<div class="session-hdr"><div><h2>⚙ Settings — ${eh(p.name)}</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>
+  <div class="card"><h3 class="mb12">Anthropic API Key</h3><label>API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Stored only in this browser.</p><div class="mt12"><button class="btn btn-secondary" id="saveApiKeyBtn">Save Key</button></div>${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}</div>
+  <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Number of questions</label><input type="number" id="numQInput" min="3" max="10" step="1" value="${nq}"><span class="text-muted text-sm">  (3–10)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
+  <div class="card"><h3 class="mb4">Story Length</h3><p class="text-muted text-sm mb12">Shorter = faster session; longer = more to read.</p><label>Target word count: <strong id="wlDisplay">${wl}</strong> words</label><input type="range" id="wordLengthSlider" min="400" max="1200" step="50" value="${wl}" oninput="document.getElementById('wlDisplay').textContent=this.value"><div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px;"><span>400 (short)</span><span>1200 (long)</span></div><div class="mt12"><button class="btn btn-primary" id="saveWordLengthBtn">Save</button></div></div>`;
+}
+
+// ─── Event Binding ─────────────────────────────────────────────────────────────
+function bindEvents(){
+  on('setupBtn','click',handleSetupContinue);
+  on('swGio','click',()=>switchChild('gio'));
+  on('swVal','click',()=>switchChild('valentino'));
+  on('rewardsNavBtn','click',()=>goTo('rewards'));
+  on('rewardsBtnHome','click',()=>goTo('rewards'));
+  on('historyBtn','click',()=>goTo('history'));
+  on('settingsBtn','click',()=>setState({screen:'settings',error:null}));
+  on('backHomeBtn','click',()=>goTo('home'));
+  on('startNewBtn','click',handleStartNew);
+  on('continueBtn','click',()=>startSession('Continue the previous story.',true));
+  on('seenFirstPartBtn','click',()=>setState({screen:'decision'}));
+  on('optABtn','click',(e)=>handleOptionChoice(e.currentTarget.dataset.choice));
+  on('optBBtn','click',(e)=>handleOptionChoice(e.currentTarget.dataset.choice));
+  on('submitChoiceBtn','click',()=>{const v=val('customChoiceInput');if(v.trim())handleOptionChoice(v.trim());});
+  on('readyForQBtn','click',handleReadyForQuestions);
+  on('submitAnswerBtn','click',handleSubmitAnswer);
+  on('hintBtn','click',()=>setState({hintLevel:Math.min((S.hintLevel||0)+1,3)}));
+  on('showFullBtn','click',()=>setState({showFullAnswer:true}));
+  on('nextQBtn','click',()=>finalizeQuestion(false,''));
+  on('retryGradeBtn','click',handleSubmitAnswer);
+  on('clarifyToggle','click',()=>setState({clarifyVisible:!S.clarifyVisible,clarifyResponse:null,clarifyText:''}));
+  on('submitClarifyBtn','click',handleClarify);
+  on('goParentReviewBtn','click',()=>setState({screen:'parent-review',reviewScore:S.score,reviewReadingLevel:S.persistedState.readingLevel,reviewMathLevel:S.persistedState.mathLevel,error:null}));
+  on('reviewScoreInput','input',(e)=>setState({reviewScore:parseInt(e.target.value,10)||0}));
+  on('reviewReadingInput','input',(e)=>setState({reviewReadingLevel:parseFloat(e.target.value)||S.persistedState.readingLevel}));
+  on('reviewMathInput','input',(e)=>setState({reviewMathLevel:parseFloat(e.target.value)||S.persistedState.mathLevel}));
+  on('confirmSaveBtn','click',handleConfirmSave);
+  on('cancelReviewBtn','click',()=>setState({screen:'wrapup'}));
+  on('saveApiKeyBtn','click',()=>{const k=val('apiKeyInput').trim();if(k){saveApiKey(k);setState({error:null});}else{setState({error:'Please enter a valid API key.'});}});
+  on('saveWordLengthBtn','click',handleSaveWordLength);
+  on('saveNumQBtn','click',handleSaveNumQ);
+  document.querySelectorAll('.q-dot[data-qi]').forEach(el=>el.addEventListener('click',()=>{const qi=parseInt(el.dataset.qi,10);setState({expandedQDot:S.expandedQDot===qi?null:qi});}));
+  document.querySelectorAll('[id^="buyBtn_"]').forEach(el=>el.addEventListener('click',()=>handleBuyItem(el.dataset.itemid)));
+  document.querySelectorAll('[id^="buyAvBtn_"]').forEach(el=>el.addEventListener('click',()=>handleBuyAvItem(el.dataset.itemid)));
+  document.querySelectorAll('[id^="equipBtn_"]').forEach(el=>el.addEventListener('click',()=>handleEquipAvItem(el.dataset.slot,el.dataset.item)));
+  document.querySelectorAll('[id^="themeChip_"]').forEach(el=>el.addEventListener('click',()=>handleUseTheme(el.dataset.themeid)));
+  document.querySelectorAll('.equip-chip[data-slot]').forEach(el=>el.addEventListener('click',()=>{if(el.classList.contains('locked'))return;handleEquipAvItem(el.dataset.slot,el.dataset.item||null);}));
+}
+function on(id,ev,fn){const el=document.getElementById(id);if(el)el.addEventListener(ev,fn);}
+function val(id){const el=document.getElementById(id);return el?el.value:'';}
+function goTo(screen){setState({screen,error:null,expandedQDot:null});}
+
+// ─── Handlers ─────────────────────────────────────────────────────────────────
+function handleSetupContinue(){const k=val('apiKeyInput').trim();if(!k){setState({error:'Please enter your Anthropic API key.'});return;}saveApiKey(k);const p=loadActiveChild(),st=loadState(p);if(st.activeTheme)applyTheme(st.activeTheme);setState({screen:'home',activeProfile:p,persistedState:st,error:null});}
+
+function switchChild(id){const p=PROFILES[id];if(!p)return;saveActiveChild(id);const st=loadState(p);if(st.activeTheme)applyTheme(st.activeTheme);setState({activeProfile:p,persistedState:st,screen:'home',error:null,levelAnnouncements:[],newBadges:[]});}
+
+function handleStartNew(){const t=val('topicInput').trim();if(!t){alert('Type a character and setting idea first!');return;}startSession(t,false);}
+
+async function startSession(topicInput,isContinuation){
+  const p=S.activeProfile,st=S.persistedState,today=new Date();
+  const format=getFormatForDate(today),domain=p.mathDomains[st.mathDomainIndex%p.mathDomains.length],lesson=LIFE_LESSONS[st.lifeLessonIndex%LIFE_LESSONS.length];
+  const wordLength=st.storyWordLength||p.defaultStoryWords;
+  const topicFinal=isContinuation&&st.lastStorySummary?`Continue the previous story. Summary: ${st.lastStorySummary}`:topicInput;
+  const numQ=st.numQuestions||p.numQuestions;
+  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
+  try{
+    const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName})}],'You are a skilled children\'s fiction writer.',3000);
+    if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story});
+    else setState({screen:'story-detective',fullStory:story});
+  }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
+}
+
+function handleOptionChoice(choice){S.topic={...(S.topic||{}),choice};generateContinuation(choice);}
+async function generateContinuation(choice){
+  setState({screen:'continuation-loading'});
+  const p=S.activeProfile,st=S.persistedState;
+  try{const cont=await callClaude([{role:'user',content:buildContinuationPrompt({firstPart:S.firstPart,choice,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,wordLength:st.storyWordLength||p.defaultStoryWords})}],'You are a skilled children\'s fiction writer.',1800);
+  setState({screen:'continuation',continuation:cont,fullStory:(S.firstPart||'')+'\n\n'+cont});}
+  catch(err){setState({screen:'story-cyp',error:`Continuation failed: ${err.message}`});}
+}
+
+async function handleReadyForQuestions(){
+  setState({screen:'loading',loadingMsg:'Generating questions…'});
+  const p=S.activeProfile,st=S.persistedState;
+  try{
+    const numQ=S.numQ||p.numQuestions;
+    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
+    let qs;
+    try{qs=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());}
+    catch{throw new Error('Could not parse questions. Please retry.');}
+    if(!Array.isArray(qs)||qs.length<numQ)throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
+    setState({screen:'questions',questions:qs.slice(0,numQ),currentQ:0,score:0,answers:[],wrongAttempts:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null});
+  }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
+}
+
+async function handleSubmitAnswer(){
+  const answer=val('answerInput').trim();
+  if(!answer)return;
+  const qs=S.questions,qi=S.currentQ,q=qs[qi],hl=S.hintLevel||0;
+
+  // After hint 3, they can still submit and get credit
+  setState({gradingLoading:true,gradingError:null});
+  try{
+    const correct=await gradeAnswer(q.q,answer,q.acceptable_variants||[q.full_answer],q.full_answer,q.type==='math');
+    setState({gradingLoading:false});
+    if(correct){
+      const pts=pointsForAnswer(true,hl);
+      const trail=S.persistedState?.avatarEquipped?.trail;
+      setState({gradingLoading:false,correctFeedback:{points:pts,trail}});
+      if(trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
+      setTimeout(()=>finalizeQuestion(true,answer),1600);
+      return;
+    }else{
+      // Keep wrong answer visible, advance hint
+      const newWrong=[...(S.wrongAttempts||[]),answer];
+      const newHL=Math.min(hl+1,3);
+      setState({wrongAttempts:newWrong,hintLevel:newHL});
+      if(newHL>=3&&hl>=3){
+        // Already at hint 3 and still wrong — they've been here; let them keep trying or show answer
+        // (no auto-fail; they choose to show answer themselves)
+      }
+    }
+  }catch(err){setState({gradingLoading:false,gradingError:`Grading error: ${err.message}`});}
+}
+
+function finalizeQuestion(correct,userAnswer){
+  const hl=S.hintLevel||0,pts=pointsForAnswer(correct,hl);
+  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts}];
+  const newScore=S.score+(correct?1:0);
+  const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
+  if(isLast)setState({answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
+  else setState({answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
+}
+function spawnTrail(particles){
+  for(let i=0;i<10;i++){
+    const el=document.createElement('div');
+    el.className='trail-particle';
+    el.textContent=particles[Math.floor(Math.random()*particles.length)];
+    const x=15+Math.random()*70;
+    const y=30+Math.random()*40;
+    el.style.cssText=`left:${x}vw;top:${y}vh;--tx:${(Math.random()-.5)*60}px;--ty:${-30-Math.random()*60}px;animation-delay:${i*0.07}s;`;
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),1400);
+  }
+}
+
+async function handleClarify(){
+  const text=val('clarifyInput').trim();if(!text)return;
+  const q=(S.questions||[])[S.currentQ];
+  setState({clarifyLoading:true,clarifyText:text});
+  try{const resp=await callClaude([{role:'user',content:buildClarifyPrompt(S.fullStory,q.q,text,S.activeProfile)}],'You are a helpful tutor.',400);setState({clarifyLoading:false,clarifyResponse:resp});}
+  catch(err){setState({clarifyLoading:false,clarifyResponse:`Error: ${err.message}`});}
+}
+
+// ─── Confirm Save — save FIRST, then update summary in background ──────────────
+async function handleConfirmSave(){
+  const p=S.activeProfile,st=S.persistedState;
+  const score=S.reviewScore!==null?S.reviewScore:S.score;
+  const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
+  const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
+  const numQ=S.numQ||p.numQuestions;
+  const{changes,announcements,meta}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},score,numQ,p.name);
+
+  const todayStr=S.sessionDate||new Date().toDateString();
+
+  // Consecutive streak
+  let streak=st.consecutiveStreak||0;
+  if(!st.lastSessionDate){streak=1;}
+  else if(st.lastSessionDate!==todayStr){
+    const diff=Math.round((new Date(todayStr)-new Date(st.lastSessionDate))/86400000);
+    streak=diff===1?streak+1:1;
+  }
+  // else same day — don't change streak
+
+  const sessToday=st.lastSessionDate===todayStr?(st.sessionsCompletedToday||0)+1:1;
+  const sessionPts=(S.answers||[]).reduce((s,a)=>s+(a.pointsEarned||0),0)+5;
+  const newPoints=(st.points||0)+sessionPts;
+  const domainCounts={...(st.domainCounts||{})};
+  domainCounts[S.mathDomain]=(domainCounts[S.mathDomain]||0)+1;
+  const detectiveCount=(st.detectiveCount||0)+(S.format==='Detective'?1:0);
+  const cypCount=(st.cypCount||0)+(S.format==='Choose-Your-Path'?1:0);
+  const allNoHint=(S.answers||[]).every(a=>(a.hintsUsed||0)===0);
+  const hadComeback=(S.answers||[]).some((a,i)=>!a.correct&&(S.answers||[]).slice(i+1).some(b=>b.correct));
+  const perfectSessions=(st.perfectSessions||0)+(score===numQ&&allNoHint?1:0);
+
+  const sessionEntry={
+    date:todayStr,format:S.format,domain:S.mathDomain,
+    score,total:numQ,pointsEarned:sessionPts,
+    allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
+    questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+  };
+
+  const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
+
+  // Build new state
+  const newState={
+    ...st,...changes,
+    lifeLessonIndex:(st.lifeLessonIndex+1)%LIFE_LESSONS.length,
+    mathDomainIndex:(st.mathDomainIndex+1)%p.mathDomains.length,
+    lastSessionDate:todayStr,sessionsCompletedToday:sessToday,
+    consecutiveStreak:streak,domainCounts,detectiveCount,cypCount,
+    perfectSessions,points:newPoints,sessionHistory:newHistory,
+    lastStorySummary:st.lastStorySummary||'',
+  };
+
+  // Check badges against new state
+  const newBadgeIds=checkBadges({...newState,points:newPoints},sessionEntry);
+  newState.badges=[...(st.badges||[]),...newBadgeIds];
+
+  // *** SAVE IMMEDIATELY — before any async operations ***
+  saveState(p,newState);
+  setState({persistedState:newState,screen:'home',levelAnnouncements:announcements,newBadges:newBadgeIds,error:null});
+
+  // Update story summary in background — won't block anything
+  callClaude([{role:'user',content:buildSummaryPrompt(S.fullStory||'')}],'You write brief story summaries.',300)
+    .then(summary=>{
+      const updated={...newState,lastStorySummary:summary};
+      saveState(p,updated);
+      S.persistedState=updated; // update in memory without re-render
+    })
+    .catch(()=>{}); // silently ignore — summary is non-critical
+}
+
+function handleSaveNumQ(){
+  const v=parseInt(val('numQInput'),10);
+  if(!v||v<3||v>10)return;
+  const ns={...S.persistedState,numQuestions:v};
+  saveState(S.activeProfile,ns);
+  setState({persistedState:ns});
+  alert(`Questions per session set to ${v} for ${S.activeProfile.name}.`);
+}
+
+function handleBuyAvItem(itemId){
+  const item=avItemById(itemId);if(!item)return;
+  const st=S.persistedState;
+  if((st.points||0)<item.cost){alert('Not enough points!');return;}
+  const slot=avSlotOf(itemId);
+  const newEq={...(st.avatarEquipped||{})}; newEq[slot]=itemId;
+  const ns={...st,points:(st.points||0)-item.cost,unlockedItems:[...(st.unlockedItems||[]),itemId],avatarEquipped:newEq};
+  saveState(S.activeProfile,ns);setState({persistedState:ns});
+}
+
+function handleEquipAvItem(slot,itemId){
+  const st=S.persistedState;
+  const newEq={...(st.avatarEquipped||{})};
+  newEq[slot]=itemId||null;
+  const ns={...st,avatarEquipped:newEq};
+  saveState(S.activeProfile,ns);setState({persistedState:ns});
+}
+
+function handleSaveWordLength(){
+  const v=parseInt(val('wordLengthSlider'),10);
+  if(!v||v<400||v>1200)return;
+  const ns={...S.persistedState,storyWordLength:v};
+  saveState(S.activeProfile,ns);
+  setState({persistedState:ns});
+  alert(`Story length saved: ${v} words.`);
+}
+
+function handleBuyItem(itemId){
+  const p=S.activeProfile,st=S.persistedState,items=STORE[p.id]||[],item=items.find(i=>i.id===itemId);
+  if(!item)return;
+  if((st.points||0)<item.cost){alert('Not enough points!');return;}
+  const ns={...st,points:(st.points||0)-item.cost,unlockedItems:[...(st.unlockedItems||[]),itemId]};
+  saveState(p,ns);setState({persistedState:ns});
+}
+
+function handleUseTheme(themeId){
+  const id=themeId==='default'?null:themeId;
+  const ns={...S.persistedState,activeTheme:id};
+  saveState(S.activeProfile,ns);applyTheme(id||'default');setState({persistedState:ns});
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function extractOption(text,letter){const re=new RegExp(`Option\\s+${letter}[:\\s]+(.+?)(?=Option\\s+[AB]|$)`,'is');const m=text.match(re);return m?m[1].trim().replace(/\n/g,' ').slice(0,220):null;}
+function eh(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
+function ea(s){if(!s)return'';return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,' ');}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+(function boot(){
+  const key=loadApiKey();
+  if(key){const p=loadActiveChild(),st=loadState(p);S.activeProfile=p;S.persistedState=st;S.screen='home';if(st.activeTheme)applyTheme(st.activeTheme);}
+  render();
+})();
+</script>
+</body>
+</html>
