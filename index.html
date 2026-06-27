@@ -245,11 +245,34 @@ function avSlotOf(id){if(AV_HAT[id])return'hat';if(AV_OUTFIT[id])return'outfit';
 const LIFE_LESSONS = ['growth mindset','bouncing back from failure','embrace discomfort','patience and delayed gratification','controlling what you can control','honesty when it\'s hard','doing the right thing when no one is watching','owning your mistakes','keeping your word','standing up for others','seeing things from someone else\'s perspective','being a good teammate','kindness isn\'t weakness','speak up even when your voice shakes','leadership means serving others','take initiative','it\'s okay to be different','hard work compounds over time','small daily choices shape who you become','gratitude shifts your perspective','you don\'t have to be the best — just keep getting better'];
 
 const API_KEY_KEY='gio_anthropic_key', ACTIVE_CHILD_KEY='gio_app_active_child', MODEL='claude-opus-4-8';
+const SB_URL='https://dtcsjhxfnjxnfeyfeeaj.supabase.co';
+const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
 function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
-function saveState(p,st){try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}}
+function saveState(p,st){
+  try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}
+  pushToSupabase(p.id,st).catch(()=>{});
+}
+async function pushToSupabase(childId,state){
+  await fetch(`${SB_URL}/rest/v1/child_state`,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
+    body:JSON.stringify({child_id:childId,state,updated_at:new Date().toISOString()})
+  });
+}
+async function pullFromSupabase(p){
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/child_state?child_id=eq.${p.id}&select=state`,{
+      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
+    });
+    if(!r.ok)return null;
+    const data=await r.json();
+    if(!data||!data[0])return null;
+    return Object.assign(defaultState(p),data[0].state);
+  }catch{return null;}
+}
 function loadApiKey(){return localStorage.getItem(API_KEY_KEY)||'';}
 function saveApiKey(k){localStorage.setItem(API_KEY_KEY,k);}
 function loadActiveChild(){return PROFILES[localStorage.getItem(ACTIVE_CHILD_KEY)]||PROFILES.gio;}
@@ -850,7 +873,20 @@ function goTo(screen){setState({screen,error:null,expandedQDot:null});}
 // ─── Handlers ─────────────────────────────────────────────────────────────────
 function handleSetupContinue(){const k=val('apiKeyInput').trim();if(!k){setState({error:'Please enter your Anthropic API key.'});return;}saveApiKey(k);const p=loadActiveChild(),st=loadState(p);if(st.activeTheme)applyTheme(st.activeTheme);setState({screen:'home',activeProfile:p,persistedState:st,error:null});}
 
-function switchChild(id){const p=PROFILES[id];if(!p)return;saveActiveChild(id);const st=loadState(p);if(st.activeTheme)applyTheme(st.activeTheme);setState({activeProfile:p,persistedState:st,screen:'home',error:null,levelAnnouncements:[],newBadges:[]});}
+async function switchChild(id){
+  const p=PROFILES[id];if(!p)return;
+  saveActiveChild(id);
+  const st=loadState(p);
+  if(st.activeTheme)applyTheme(st.activeTheme);
+  setState({activeProfile:p,persistedState:st,screen:'home',error:null,levelAnnouncements:[],newBadges:[]});
+  const remote=await pullFromSupabase(p);
+  if(remote){
+    saveState(p,remote);
+    S.persistedState=remote;
+    if(remote.activeTheme)applyTheme(remote.activeTheme);
+    render();
+  }
+}
 
 function handleStartNew(){const t=val('topicInput').trim();if(!t){alert('Type a character and setting idea first!');return;}startSession(t,false);}
 
@@ -1075,10 +1111,26 @@ function eh(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</
 function ea(s){if(!s)return'';return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,' ');}
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
-(function boot(){
+(async function boot(){
   const key=loadApiKey();
-  if(key){const p=loadActiveChild(),st=loadState(p);S.activeProfile=p;S.persistedState=st;S.screen='home';if(st.activeTheme)applyTheme(st.activeTheme);}
-  render();
+  if(key){
+    const p=loadActiveChild();
+    // Load from localStorage immediately so screen appears fast
+    let st=loadState(p);
+    S.activeProfile=p;S.persistedState=st;S.screen='home';
+    if(st.activeTheme)applyTheme(st.activeTheme);
+    render();
+    // Then pull from Supabase and update if data exists there
+    const remote=await pullFromSupabase(p);
+    if(remote){
+      saveState(p,remote); // also updates localStorage
+      S.persistedState=remote;
+      if(remote.activeTheme)applyTheme(remote.activeTheme);
+      render();
+    }
+  } else {
+    render();
+  }
 })();
 </script>
 </body>
