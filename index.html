@@ -102,6 +102,16 @@ input[type="range"]{width:100%;accent-color:var(--accent);}
 .score-big{font-size:2.8rem;font-weight:800;text-align:center;color:var(--accent);line-height:1;}
 .pts-earned{font-size:1.1rem;color:var(--warning);font-weight:700;text-align:center;margin-top:4px;}
 .api-key-note{font-size:.78rem;color:var(--text2);margin-top:5px;}
+/* Multiple choice */
+.choices-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:14px;}
+.choice-btn{padding:13px 14px;border:2px solid var(--border);border-radius:var(--rs);background:var(--surface2);color:var(--text);font-size:.9rem;cursor:pointer;text-align:left;line-height:1.4;transition:border-color .15s,background .15s;}
+.choice-btn:hover:not(:disabled){border-color:var(--accent);background:rgba(91,127,245,.08);}
+.choice-btn:disabled{cursor:default;}
+.choice-btn.choice-wrong{border-color:var(--danger) !important;background:rgba(232,93,93,.08);opacity:.65;}
+@media(max-width:500px){.choices-grid{grid-template-columns:1fr;}}
+/* Parent override */
+.parent-override-btn{display:inline-block;margin-top:12px;padding:5px 11px;font-size:.72rem;color:var(--text2);background:none;border:1px solid var(--border);border-radius:var(--rs);cursor:pointer;}
+.parent-override-btn:hover{border-color:var(--warning);color:var(--warning);}
 /* Correct-answer celebration */
 .correct-celebrate{background:linear-gradient(135deg,rgba(61,186,122,.15),rgba(91,127,245,.08));border:2px solid var(--success);border-radius:var(--r);padding:28px 20px;text-align:center;animation:cel-in .3s ease;}
 @keyframes cel-in{from{opacity:0;transform:scale(.94);}to{opacity:1;transform:scale(1);}}
@@ -245,11 +255,12 @@ function avSlotOf(id){if(AV_HAT[id])return'hat';if(AV_OUTFIT[id])return'outfit';
 const LIFE_LESSONS = ['growth mindset','bouncing back from failure','embrace discomfort','patience and delayed gratification','controlling what you can control','honesty when it\'s hard','doing the right thing when no one is watching','owning your mistakes','keeping your word','standing up for others','seeing things from someone else\'s perspective','being a good teammate','kindness isn\'t weakness','speak up even when your voice shakes','leadership means serving others','take initiative','it\'s okay to be different','hard work compounds over time','small daily choices shape who you become','gratitude shifts your perspective','you don\'t have to be the best — just keep getting better'];
 
 const API_KEY_KEY='gio_anthropic_key', ACTIVE_CHILD_KEY='gio_app_active_child', MODEL='claude-opus-4-8';
+const ALL_MATH_DOMAINS=['Numbers and Operations','Fractions','Measurement and Data','Geometry','Algebra','Ratios and Proportions','Statistics and Probability'];
 const SB_URL='https://dtcsjhxfnjxnfeyfeeaj.supabase.co';
 const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
-function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
+function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
 function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
 function saveState(p,st){
   try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}
@@ -488,8 +499,18 @@ HINTS:
    hint2: Ask a focused yes/no or fill-in question about that exact moment — still no answer
    hint3_partial: First half of the answer, cut mid-sentence
 
+MULTIPLE CHOICE (non-math questions ONLY):
+   For every "general" and "lesson" question, add a "choices" array with exactly 4 options and a "correct_choice" field:
+   - "choices": ["A. [correct or wrong answer]","B. ...","C. ...","D. ..."]
+   - "correct_choice": "A" (or B, C, D — whichever letter holds the correct answer)
+   - Randomize which letter is correct each time
+   - Wrong choices must be plausible but clearly wrong to a careful reader
+   - Do NOT include "acceptable_variants" for these — just choices + correct_choice
+   Math questions stay as typed-answer format (no choices).
+
 Return a JSON array of exactly ${n} objects:
-[{"q":"...","type":"math|lesson|general","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}]
+Non-math: {"q":"...","type":"lesson|general","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
+Math:      {"q":"...","type":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
 
 - Exactly 1 type "math"
 - Exactly 1 type "lesson" (about what a character DID, not how they felt)
@@ -518,7 +539,7 @@ let S={
   screen:'setup',activeProfile:null,persistedState:null,
   format:null,lifeLesson:null,mathDomain:null,topic:null,
   firstPart:null,continuation:null,fullStory:null,
-  questions:null,answers:[],wrongAttempts:[],currentQ:0,score:0,
+  questions:null,answers:[],wrongAttempts:[],wrongChoices:[],currentQ:0,score:0,
   sessionDate:null,numQ:5,
   clarifyVisible:false,clarifyText:'',clarifyResponse:null,clarifyLoading:false,
   hintLevel:0,showFullAnswer:false,gradingLoading:false,gradingError:null,
@@ -663,6 +684,15 @@ function renderQuestions(){
             <div class="celebrate-bonus">+${S.correctFeedback.points} points</div>
             <div class="celebrate-sub">${qi+1<total?'Moving to next question…':'Almost done…'}</div>
           </div>
+        `:q.choices&&q.type!=='math'?`
+          <div class="choices-grid mt12">
+            ${(q.choices||[]).map((c,ci)=>{
+              const letter=c.charAt(0);
+              const isWrong=(S.wrongChoices||[]).includes(letter);
+              return`<button class="choice-btn${isWrong?' choice-wrong':''}" id="choiceBtn_${letter}" data-letter="${letter}" ${isWrong?'disabled':''}>${eh(c)}</button>`;
+            }).join('')}
+          </div>
+          ${wrongAttempts.length>0?`<div class="mt10 text-center"><button class="parent-override-btn" id="parentOverrideBtn">Parent: mark correct</button></div>`:''}
         `:!showFull?`
           <div class="mt12"><label>Your answer:</label>
           <textarea id="answerInput" style="min-height:80px;" rows="3" placeholder="Type your answer here…"></textarea></div>
@@ -671,6 +701,7 @@ function renderQuestions(){
             ${hl<3?`<button class="btn btn-secondary" id="hintBtn" ${S.gradingLoading?'disabled':''}>Get a hint (${3-hl} left)</button>`:''}
           </div>
           ${hl>=3?`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`:''}
+          ${wrongAttempts.length>0?`<div class="mt10 text-center"><button class="parent-override-btn" id="parentOverrideBtn">Parent: mark correct</button></div>`:''}
         `:`<button class="btn btn-primary btn-full mt12" id="nextQBtn">Next ${qi+1<total?'question':'to results'} →</button>`}
 
         <div class="clarify-section">
@@ -823,6 +854,7 @@ function renderSettings(){
   return`<div class="session-hdr"><div><h2>⚙ Settings — ${eh(p.name)}</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>
   <div class="card"><h3 class="mb12">Anthropic API Key</h3><label>API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Stored only in this browser.</p><div class="mt12"><button class="btn btn-secondary" id="saveApiKeyBtn">Save Key</button></div>${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}</div>
   <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Number of questions</label><input type="number" id="numQInput" min="3" max="10" step="1" value="${nq}"><span class="text-muted text-sm">  (3–10)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
+  <div class="card"><h3 class="mb4">Math Topics</h3><p class="text-muted text-sm mb12">Choose which math topics appear in ${eh(p.name)}'s sessions. At least one must be selected.</p>${ALL_MATH_DOMAINS.map(d=>{const active=st.customMathDomains?st.customMathDomains.includes(d):p.mathDomains.includes(d);return`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;"><input type="checkbox" class="math-domain-chk" value="${eh(d)}" ${active?'checked':''}><span>${eh(d)}</span></label>`;}).join('')}<div class="mt12"><button class="btn btn-primary" id="saveMathDomainsBtn">Save Topics</button></div></div>
   <div class="card"><h3 class="mb4">Story Length</h3><p class="text-muted text-sm mb12">Shorter = faster session; longer = more to read.</p><label>Target word count: <strong id="wlDisplay">${wl}</strong> words</label><input type="range" id="wordLengthSlider" min="400" max="1200" step="50" value="${wl}" oninput="document.getElementById('wlDisplay').textContent=this.value"><div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px;"><span>400 (short)</span><span>1200 (long)</span></div><div class="mt12"><button class="btn btn-primary" id="saveWordLengthBtn">Save</button></div></div>`;
 }
 
@@ -859,6 +891,9 @@ function bindEvents(){
   on('saveApiKeyBtn','click',()=>{const k=val('apiKeyInput').trim();if(k){saveApiKey(k);setState({error:null});}else{setState({error:'Please enter a valid API key.'});}});
   on('saveWordLengthBtn','click',handleSaveWordLength);
   on('saveNumQBtn','click',handleSaveNumQ);
+  on('saveMathDomainsBtn','click',handleSaveMathDomains);
+  on('parentOverrideBtn','click',handleParentOverride);
+  document.querySelectorAll('.choice-btn[data-letter]').forEach(el=>el.addEventListener('click',()=>handleChoiceSelect(el.dataset.letter)));
   document.querySelectorAll('.q-dot[data-qi]').forEach(el=>el.addEventListener('click',()=>{const qi=parseInt(el.dataset.qi,10);setState({expandedQDot:S.expandedQDot===qi?null:qi});}));
   document.querySelectorAll('[id^="buyBtn_"]').forEach(el=>el.addEventListener('click',()=>handleBuyItem(el.dataset.itemid)));
   document.querySelectorAll('[id^="buyAvBtn_"]').forEach(el=>el.addEventListener('click',()=>handleBuyAvItem(el.dataset.itemid)));
@@ -892,11 +927,12 @@ function handleStartNew(){const t=val('topicInput').trim();if(!t){alert('Type a 
 
 async function startSession(topicInput,isContinuation){
   const p=S.activeProfile,st=S.persistedState,today=new Date();
-  const format=getFormatForDate(today),domain=p.mathDomains[st.mathDomainIndex%p.mathDomains.length],lesson=LIFE_LESSONS[st.lifeLessonIndex%LIFE_LESSONS.length];
+  const activeDomains=st.customMathDomains&&st.customMathDomains.length?st.customMathDomains:p.mathDomains;
+  const format=getFormatForDate(today),domain=activeDomains[st.mathDomainIndex%activeDomains.length],lesson=LIFE_LESSONS[st.lifeLessonIndex%LIFE_LESSONS.length];
   const wordLength=st.storyWordLength||p.defaultStoryWords;
   const topicFinal=isContinuation&&st.lastStorySummary?`Continue the previous story. Summary: ${st.lastStorySummary}`:topicInput;
   const numQ=st.numQuestions||p.numQuestions;
-  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
+  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName})}],'You are a skilled children\'s fiction writer.',3000);
     if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story});
@@ -925,6 +961,33 @@ async function handleReadyForQuestions(){
     if(!Array.isArray(qs)||qs.length<numQ)throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
     setState({screen:'questions',questions:qs.slice(0,numQ),currentQ:0,score:0,answers:[],wrongAttempts:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
+}
+
+function handleChoiceSelect(letter){
+  const q=(S.questions||[])[S.currentQ];
+  if(!q||S.correctFeedback)return;
+  if(letter===q.correct_choice){
+    const hl=S.hintLevel||0,pts=pointsForAnswer(true,hl);
+    const trail=S.persistedState?.avatarEquipped?.trail;
+    setState({correctFeedback:{points:pts,trail}});
+    if(trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
+    setTimeout(()=>finalizeQuestion(true,letter),1600);
+  }else{
+    const newWrong=[...(S.wrongChoices||[]),letter];
+    const newWrongAttempts=[...(S.wrongAttempts||[]),`Choice ${letter}`];
+    setState({wrongChoices:newWrong,wrongAttempts:newWrongAttempts});
+  }
+}
+
+function handleParentOverride(){
+  if(!confirm('Mark this answer as correct? This will award 1 point and move to the next question.'))return;
+  const q=(S.questions||[])[S.currentQ];
+  const userAnswer=q.choices?`Override (${q.correct_choice})`:'Override';
+  const pts=1;
+  const trail=S.persistedState?.avatarEquipped?.trail;
+  setState({correctFeedback:{points:pts,trail}});
+  if(trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
+  setTimeout(()=>finalizeQuestion(true,userAnswer,pts),1600);
 }
 
 async function handleSubmitAnswer(){
@@ -957,13 +1020,13 @@ async function handleSubmitAnswer(){
   }catch(err){setState({gradingLoading:false,gradingError:`Grading error: ${err.message}`});}
 }
 
-function finalizeQuestion(correct,userAnswer){
-  const hl=S.hintLevel||0,pts=pointsForAnswer(correct,hl);
+function finalizeQuestion(correct,userAnswer,overridePts){
+  const hl=S.hintLevel||0,pts=overridePts!==undefined?overridePts:pointsForAnswer(correct,hl);
   const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts}];
   const newScore=S.score+(correct?1:0);
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
   if(isLast)setState({answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
-  else setState({answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
+  else setState({answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
 }
 function spawnTrail(particles){
   for(let i=0;i<10;i++){
@@ -976,6 +1039,15 @@ function spawnTrail(particles){
     document.body.appendChild(el);
     setTimeout(()=>el.remove(),1400);
   }
+}
+
+function handleSaveMathDomains(){
+  const checked=[...document.querySelectorAll('.math-domain-chk:checked')].map(el=>el.value);
+  if(!checked.length){alert('Select at least one math topic.');return;}
+  const p=S.activeProfile,st=S.persistedState;
+  const newSt={...st,customMathDomains:checked,mathDomainIndex:0};
+  S.persistedState=newSt;saveState(p,newSt);
+  alert(`Saved! ${eh(p.name)}'s math topics updated.`);
 }
 
 async function handleClarify(){
@@ -1030,7 +1102,7 @@ async function handleConfirmSave(){
   const newState={
     ...st,...changes,
     lifeLessonIndex:(st.lifeLessonIndex+1)%LIFE_LESSONS.length,
-    mathDomainIndex:(st.mathDomainIndex+1)%p.mathDomains.length,
+    mathDomainIndex:(st.mathDomainIndex+1)%(st.customMathDomains&&st.customMathDomains.length?st.customMathDomains:p.mathDomains).length,
     lastSessionDate:todayStr,sessionsCompletedToday:sessToday,
     consecutiveStreak:streak,domainCounts,detectiveCount,cypCount,
     perfectSessions,points:newPoints,sessionHistory:newHistory,
