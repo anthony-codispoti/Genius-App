@@ -146,10 +146,16 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 .text-muted{color:var(--text2);}.text-sm{font-size:.85rem;}.text-xs{font-size:.75rem;}
 .text-success{color:var(--success);}.text-danger{color:var(--danger);}.text-warning{color:var(--warning);}.text-accent{color:var(--accent);}
 .bold{font-weight:700;}.text-center{text-align:center;}
+.pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;display:flex;align-items:center;justify-content:center;}
+.pin-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;width:min(320px,90vw);display:flex;flex-direction:column;gap:12px;}
+.pin-box h3{margin:0;font-size:1rem;}
+.pin-box input{font-size:1.2rem;letter-spacing:4px;text-align:center;padding:10px;}
+.pin-box .row{display:flex;gap:8px;justify-content:flex-end;}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="pinOverlay" style="display:none;"></div>
 <script>
 'use strict';
 
@@ -870,7 +876,7 @@ function bindEvents(){
   on('rewardsNavBtn','click',()=>goTo('rewards'));
   on('rewardsBtnHome','click',()=>goTo('rewards'));
   on('historyBtn','click',()=>goTo('history'));
-  on('settingsBtn','click',()=>{const pin=prompt('Enter parent PIN to access Settings:');if(pin===PARENT_PIN)setState({screen:'settings',error:null});else if(pin!==null)alert('Incorrect PIN.');});
+  on('settingsBtn','click',showPinModal);
   on('backHomeBtn','click',()=>goTo('home'));
   on('startNewBtn','click',handleStartNew);
   on('continueBtn','click',()=>startSession('Continue the previous story.',true));
@@ -1044,6 +1050,29 @@ function spawnTrail(particles){
     document.body.appendChild(el);
     setTimeout(()=>el.remove(),1400);
   }
+}
+
+function showPinModal(){
+  const ov=document.getElementById('pinOverlay');
+  ov.style.display='flex';
+  ov.innerHTML=`<div class="pin-overlay"><div class="pin-box">
+    <h3>🔒 Parent PIN required</h3>
+    <input type="password" id="pinInput" maxlength="20" placeholder="••••••••" autocomplete="off" inputmode="numeric">
+    <div id="pinError" style="color:var(--danger);font-size:.82rem;min-height:1.1em;"></div>
+    <div class="row">
+      <button class="btn btn-secondary" id="pinCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="pinSubmitBtn">Enter</button>
+    </div>
+  </div></div>`;
+  const input=document.getElementById('pinInput');
+  input.focus();
+  document.getElementById('pinCancelBtn').onclick=()=>{ov.style.display='none';ov.innerHTML='';};
+  function tryPin(){
+    if(input.value===PARENT_PIN){ov.style.display='none';ov.innerHTML='';setState({screen:'settings',error:null});}
+    else{document.getElementById('pinError').textContent='Incorrect PIN. Try again.';input.value='';input.focus();}
+  }
+  document.getElementById('pinSubmitBtn').onclick=tryPin;
+  input.addEventListener('keydown',e=>{if(e.key==='Enter')tryPin();});
 }
 
 function handleSaveMathDomains(){
