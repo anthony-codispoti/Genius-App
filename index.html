@@ -260,7 +260,8 @@ const SB_URL='https://dtcsjhxfnjxnfeyfeeaj.supabase.co';
 const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
-function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
+const PARENT_PIN='48954895';
+function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
 function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
 function saveState(p,st){
   try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}
@@ -455,8 +456,10 @@ Choice made: "${choice}"
 Write the continuation (~${Math.round(wordLength*0.4)} words). End the story satisfyingly.`;
 }
 
-function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ}){
+function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ,numMathQ}){
   const n=numQ||profile.numQuestions;
+  const nm=numMathQ||1;
+  const nr=n-nm;
   return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)}.
 
 Story:
@@ -482,8 +485,9 @@ QUESTION STRUCTURE:
    - "Who [did specific action]?"
    - "Why did the author describe [specific detail]?" (author's purpose — max 1 of these)
 
-MATH QUESTION (exactly 1, type "math"):
+MATH QUESTIONS (exactly ${nm}, type "math"):
    - Ask ${profile.name} to calculate the answer himself
+   - Each must use different numbers from the story
    - Example: "What is the total if [story numbers]? Calculate it."
    - full_answer must show the calculation steps and final number
 
@@ -512,9 +516,9 @@ Return a JSON array of exactly ${n} objects:
 Non-math: {"q":"...","type":"lesson|general","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
 Math:      {"q":"...","type":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
 
-- Exactly 1 type "math"
+- Exactly ${nm} type "math"
 - Exactly 1 type "lesson" (about what a character DID, not how they felt)
-- Rest type "general"
+- Remaining ${nr-1} type "general"
 - Return ONLY the JSON array, nothing else`;
 }
 
@@ -853,7 +857,7 @@ function renderSettings(){
   const nq=st.numQuestions||p.numQuestions;
   return`<div class="session-hdr"><div><h2>⚙ Settings — ${eh(p.name)}</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>
   <div class="card"><h3 class="mb12">Anthropic API Key</h3><label>API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Stored only in this browser.</p><div class="mt12"><button class="btn btn-secondary" id="saveApiKeyBtn">Save Key</button></div>${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}</div>
-  <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Number of questions</label><input type="number" id="numQInput" min="3" max="10" step="1" value="${nq}"><span class="text-muted text-sm">  (3–10)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
+  <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many total questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Total questions</label><input type="number" id="numQInput" min="3" max="15" step="1" value="${nq}"><span class="text-muted text-sm"> (3–15)</span></div><div class="mt4"><label style="min-width:0;margin:0;">Math questions</label><input type="number" id="numMathQInput" min="1" max="5" step="1" value="${st.numMathQuestions||1}"><span class="text-muted text-sm"> (1–5, must be less than total)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
   <div class="card"><h3 class="mb4">Math Topics</h3><p class="text-muted text-sm mb12">Choose which math topics appear in ${eh(p.name)}'s sessions. At least one must be selected.</p>${ALL_MATH_DOMAINS.map(d=>{const active=st.customMathDomains?st.customMathDomains.includes(d):p.mathDomains.includes(d);return`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;"><input type="checkbox" class="math-domain-chk" value="${eh(d)}" ${active?'checked':''}><span>${eh(d)}</span></label>`;}).join('')}<div class="mt12"><button class="btn btn-primary" id="saveMathDomainsBtn">Save Topics</button></div></div>
   <div class="card"><h3 class="mb4">Story Length</h3><p class="text-muted text-sm mb12">Shorter = faster session; longer = more to read.</p><label>Target word count: <strong id="wlDisplay">${wl}</strong> words</label><input type="range" id="wordLengthSlider" min="400" max="1200" step="50" value="${wl}" oninput="document.getElementById('wlDisplay').textContent=this.value"><div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px;"><span>400 (short)</span><span>1200 (long)</span></div><div class="mt12"><button class="btn btn-primary" id="saveWordLengthBtn">Save</button></div></div>`;
 }
@@ -866,7 +870,7 @@ function bindEvents(){
   on('rewardsNavBtn','click',()=>goTo('rewards'));
   on('rewardsBtnHome','click',()=>goTo('rewards'));
   on('historyBtn','click',()=>goTo('history'));
-  on('settingsBtn','click',()=>setState({screen:'settings',error:null}));
+  on('settingsBtn','click',()=>{const pin=prompt('Enter parent PIN to access Settings:');if(pin===PARENT_PIN)setState({screen:'settings',error:null});else if(pin!==null)alert('Incorrect PIN.');});
   on('backHomeBtn','click',()=>goTo('home'));
   on('startNewBtn','click',handleStartNew);
   on('continueBtn','click',()=>startSession('Continue the previous story.',true));
@@ -954,7 +958,8 @@ async function handleReadyForQuestions(){
   const p=S.activeProfile,st=S.persistedState;
   try{
     const numQ=S.numQ||p.numQuestions;
-    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
+    const numMathQ=st.numMathQuestions||1;
+    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
     let qs;
     try{qs=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());}
     catch{throw new Error('Could not parse questions. Please retry.');}
@@ -1129,11 +1134,14 @@ async function handleConfirmSave(){
 
 function handleSaveNumQ(){
   const v=parseInt(val('numQInput'),10);
-  if(!v||v<3||v>10)return;
-  const ns={...S.persistedState,numQuestions:v};
+  const m=parseInt(val('numMathQInput'),10);
+  if(!v||v<3||v>15){alert('Total questions must be between 3 and 15.');return;}
+  if(!m||m<1||m>5){alert('Math questions must be between 1 and 5.');return;}
+  if(m>=v){alert('Math questions must be less than total questions.');return;}
+  const ns={...S.persistedState,numQuestions:v,numMathQuestions:m};
   saveState(S.activeProfile,ns);
   setState({persistedState:ns});
-  alert(`Questions per session set to ${v} for ${S.activeProfile.name}.`);
+  alert(`Saved: ${v} total questions, ${m} math question${m>1?'s':''} per session for ${S.activeProfile.name}.`);
 }
 
 function handleBuyAvItem(itemId){
