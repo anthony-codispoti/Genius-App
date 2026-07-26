@@ -151,6 +151,22 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 .pin-box h3{margin:0;font-size:1rem;}
 .pin-box input{font-size:1.2rem;letter-spacing:4px;text-align:center;padding:10px;}
 .pin-box .row{display:flex;gap:8px;justify-content:flex-end;}
+.fact-pick-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px;}
+@media(max-width:500px){.fact-pick-grid{grid-template-columns:1fr;}}
+.fact-pick-card{padding:22px 16px;border:2px solid var(--border);border-radius:var(--r);background:var(--surface2);cursor:pointer;text-align:center;transition:border-color .18s,transform .12s,background .18s;width:100%;}
+.fact-pick-card:hover{border-color:var(--accent);background:rgba(91,127,245,.07);transform:translateY(-2px);}
+.fact-pick-icon{font-size:2.4rem;margin-bottom:8px;}
+.fact-pick-name{font-size:1rem;font-weight:700;margin-bottom:5px;}
+.fact-pick-examples{font-size:.78rem;color:var(--text2);line-height:1.4;}
+.flip-cards{display:flex;flex-direction:column;gap:12px;margin:20px 0;}
+.flip-card{perspective:900px;}
+.flip-card-inner{position:relative;width:100%;min-height:88px;transition:transform .65s cubic-bezier(.4,0,.2,1);transform-style:preserve-3d;}
+.flip-card.flipped .flip-card-inner{transform:rotateX(180deg);}
+.flip-card-front,.flip-card-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:var(--rs);padding:16px 18px;display:flex;align-items:center;justify-content:center;}
+.flip-card-front{background:var(--surface2);border:1px solid var(--border);color:var(--text2);font-size:.9rem;}
+.flip-card-back{background:var(--surface2);border:1px solid var(--accent);transform:rotateX(180deg);flex-direction:column;align-items:flex-start;justify-content:flex-start;padding-top:14px;}
+.flip-fact-label{font-size:.68rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;}
+.flip-fact-text{font-size:.9rem;line-height:1.45;}
 </style>
 </head>
 <body>
@@ -262,12 +278,24 @@ const LIFE_LESSONS = ['growth mindset','bouncing back from failure','embrace dis
 
 const API_KEY_KEY='gio_anthropic_key', ACTIVE_CHILD_KEY='gio_app_active_child', MODEL='claude-opus-4-8';
 const ALL_MATH_DOMAINS=['Numbers and Operations','Fractions','Measurement and Data','Geometry','Algebra','Ratios and Proportions','Statistics and Probability'];
+const FACT_DOMAINS=[
+  {id:'ancient_history',name:'Ancient History',icon:'🏛️',examples:'Egypt, Rome, Greece, Aztecs, Vikings'},
+  {id:'world_history',name:'American & World History',icon:'🗺️',examples:'Revolution, WWII, civil rights, explorers'},
+  {id:'earth_science',name:'Earth Science',icon:'🌍',examples:'Water cycle, volcanoes, plate tectonics, weather'},
+  {id:'life_science',name:'Life Science',icon:'🦋',examples:'Ecosystems, human body, animals, food chains'},
+  {id:'physical_science',name:'Physical Science',icon:'⚡',examples:'Electricity, light, gravity, simple machines'},
+  {id:'astronomy',name:'Astronomy',icon:'🔭',examples:'Solar system, stars, moon, space exploration'},
+  {id:'geography',name:'Geography & Cultures',icon:'🌐',examples:'Countries, climates, landmarks, traditions'},
+  {id:'technology',name:'Technology & Inventions',icon:'💡',examples:'Internet, engines, flight, printing press'},
+  {id:'economics',name:'Economics',icon:'💰',examples:'Supply/demand, trade, how money works'},
+  {id:'health',name:'Health & Nutrition',icon:'🏃',examples:'How the body works, exercise, food science'},
+];
 const SB_URL='https://dtcsjhxfnjxnfeyfeeaj.supabase.co';
 const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
-function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
+function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,factDomainIndex:0,factDomainsActive:null,factDomainFreeform:null,factDomainRepeatLimit:false,factDomainRecentChoices:[],lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
 function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
 function saveState(p,st){
   try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}
@@ -420,7 +448,7 @@ Reply ONLY with: {"correct":true} or {"correct":false}`;
 }
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName}){
+function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain}){
   const isCYP=format==='Choose-Your-Path';
   const part1Words=Math.round(wordLength*0.6);
   const formatInst=isCYP
@@ -428,10 +456,17 @@ function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,life
     :`FORMAT: Detective Mystery.\nBuild a mystery solvable only through careful reading. The math situation is the key clue. Resolve it by the end. ~${wordLength} words.`;
   const heroNote=heroName?`\nUse "${heroName}" as the main character or sidekick name.`:'';
   const contNote=storySummary?`\nCONTINUITY (only if topic asks to continue): ${storySummary}`:'';
+  const factNote=factDomain?`
+FACTUAL LEARNING DOMAIN: ${factDomain}
+- Choose ONE narrow, specific angle within this domain (e.g., not "ancient Rome" but "how Roman aqueducts brought water to cities")
+- Weave 3–4 real, accurate facts into the plot — the character USES or DISCOVERS them to solve problems, never lectures about them
+- Facts must be well-established and unambiguous — no contested science or history
+- Measurements: use imperial first (feet, miles, pounds, °F) with metric in parentheses on first use — e.g., "15 miles (24 km)"
+- The factual content should feel like a natural part of the adventure, not a school lesson`:'';
   return `You are writing a story for ${profile.name}, age ${profile.age}, entering ${profile.grade} grade.
 
 STYLE: ${profile.sentenceComplexity}${heroNote}
-
+${factNote}
 MATH SITUATION — CRITICAL:
 - Embed exactly ONE math situation matched to level ${mathLevel.toFixed(1)} in "${mathDomain}"
 - Give the reader all numbers needed to solve it
@@ -519,13 +554,23 @@ MULTIPLE CHOICE (non-math questions ONLY):
    Math questions stay as typed-answer format (no choices).
 
 Return a JSON array of exactly ${n} objects:
-Non-math: {"q":"...","type":"lesson|general","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
-Math:      {"q":"...","type":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
+Return a JSON OBJECT (not array) with two keys:
+{
+  "fact_topic": "The specific subtopic you chose (e.g., 'Roman aqueducts' or 'how volcanoes form')",
+  "fact_bullets": ["Short punchy real-world fact 1","Short punchy real-world fact 2","Short punchy real-world fact 3"],
+  "questions": [
+    non-math: {"q":"...","type":"lesson|general","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
+    math:      {"q":"...","type":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
+  ]
+}
 
-- Exactly ${nm} type "math"
-- Exactly 1 type "lesson" (about what a character DID, not how they felt)
-- Remaining ${nr-1} type "general"
-- Return ONLY the JSON array, nothing else`;
+- fact_topic: the specific angle you picked (one phrase, e.g. "Roman aqueducts")
+- fact_bullets: exactly 3 real facts from the domain — short, punchy, surprising. NOT summaries of the story. Real-world truths that appeared in the story.
+- questions array: exactly ${n} questions total
+  - Exactly ${nm} type "math"
+  - Exactly 1 type "lesson" (about what a character DID, not how they felt)
+  - Remaining ${nr-1} type "general"
+- Return ONLY the JSON object, nothing else`;
 }
 
 function buildClarifyPrompt(story,question,clarifyQ,profile){
@@ -557,11 +602,14 @@ let S={
   loadingMsg:'',error:null,
   reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,
   levelAnnouncements:[],newBadges:[],expandedQDot:null,
+  factPickOptions:null,factDomain:null,factDomainId:null,
+  factBullets:[],factTopic:null,
+  pendingTopic:null,pendingIsContinuation:false,
 };
 function setState(patch){Object.assign(S,patch);render();}
 
 // ─── Render ────────────────────────────────────────────────────────────────────
-const SCREENS={setup:renderSetup,home:renderHome,loading:renderLoading,'story-cyp':renderStoryCYP,'story-detective':renderStoryDetective,decision:renderDecision,'continuation-loading':renderContinuationLoading,continuation:renderContinuation,questions:renderQuestions,wrapup:renderWrapup,'parent-review':renderParentReview,rewards:renderRewards,history:renderHistory,settings:renderSettings};
+const SCREENS={setup:renderSetup,home:renderHome,loading:renderLoading,'story-cyp':renderStoryCYP,'story-detective':renderStoryDetective,decision:renderDecision,'continuation-loading':renderContinuationLoading,continuation:renderContinuation,questions:renderQuestions,wrapup:renderWrapup,'fact-reveal':renderFactReveal,'parent-review':renderParentReview,rewards:renderRewards,history:renderHistory,settings:renderSettings,'fact-pick':renderFactPick};
 function render(){document.getElementById('app').innerHTML=(SCREENS[S.screen]||renderSetup)();bindEvents();if(S.persistedState?.activeTheme)applyTheme(S.persistedState.activeTheme);}
 
 function renderSwitcher(){const id=(S.activeProfile||PROFILES.gio).id;return`<div class="child-switcher"><button class="child-tab${id==='gio'?' active':''}" id="swGio">Gio</button><button class="child-tab${id==='valentino'?' active':''}" id="swVal">Valentino</button></div>`;}
@@ -736,7 +784,8 @@ function renderWrapup(){
     const a=S.answers[i];if(!a)return'';
     return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">Q${i+1}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
   }).join('');
-  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb20">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p><button class="btn btn-primary btn-lg" id="goParentReviewBtn">Parent review →</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
+  const hasReal=S.factBullets&&S.factBullets.length>0;
+  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goParentReviewBtn">Parent review →</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
 }
 
 // ─── Parent Review ────────────────────────────────────────────────────────────
@@ -854,8 +903,44 @@ function renderRewards(){
 function renderHistory(){
   const p=S.activeProfile,st=S.persistedState;
   const history=(st.sessionHistory||[]).slice().reverse();
-  const histHTML=history.length===0?'<p class="text-muted text-sm">No sessions completed yet.</p>':history.map(sess=>`<div class="history-session"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;"><div><div class="bold text-sm">${eh(sess.date)}</div><div class="text-xs text-muted">${eh(sess.format)} · ${eh(sess.domain)}</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="tag${sess.score===sess.total?' tag-success':''}">${sess.score}/${sess.total}</span><span class="text-xs text-warning">+${sess.pointsEarned||0} pts</span></div></div><div class="mt8">${(sess.questions||[]).map((q,qi)=>`<div class="history-q"><div style="display:flex;justify-content:space-between;gap:8px;"><div class="text-sm"><span class="bold">Q${qi+1}:</span> ${eh(q.q)}</div><div>${q.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${q.hintsUsed>0?` <span class="text-xs text-muted">${q.hintsUsed}h</span>`:''}</div></div>${q.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(q.userAnswer)}</div>`:''}<div class="text-xs mt4 text-muted">Answer: ${eh(q.fullAnswer)}</div></div>`).join('')}</div></div>`).join('');
+  const histHTML=history.length===0?'<p class="text-muted text-sm">No sessions completed yet.</p>':history.map(sess=>`<div class="history-session"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;"><div><div class="bold text-sm">${eh(sess.date)}</div><div class="text-xs text-muted">${eh(sess.format)} · Math: ${eh(sess.domain)}${sess.factTopic||sess.factDomain?` · 📚 ${eh(sess.factTopic||sess.factDomain)}`:''}</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="tag${sess.score===sess.total?' tag-success':''}">${sess.score}/${sess.total}</span><span class="text-xs text-warning">+${sess.pointsEarned||0} pts</span></div></div><div class="mt8">${(sess.questions||[]).map((q,qi)=>`<div class="history-q"><div style="display:flex;justify-content:space-between;gap:8px;"><div class="text-sm"><span class="bold">Q${qi+1}:</span> ${eh(q.q)}</div><div>${q.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${q.hintsUsed>0?` <span class="text-xs text-muted">${q.hintsUsed}h</span>`:''}</div></div>${q.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(q.userAnswer)}</div>`:''}<div class="text-xs mt4 text-muted">Answer: ${eh(q.fullAnswer)}</div></div>`).join('')}</div></div>`).join('');
   return`<div class="session-hdr"><div><h2>📋 ${eh(p.name)}'s Session History</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>${histHTML}`;
+}
+
+function renderFactPick(){
+  const opts=S.factPickOptions||[];
+  return`<div class="session-hdr">
+    <div><h2>Pick your learning theme</h2><div class="text-muted text-sm">Today's story will weave in real facts from this topic</div></div>
+    <button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Back</button>
+  </div>
+  <div class="fact-pick-grid">
+    ${opts.map((d,i)=>`<button class="fact-pick-card" id="factPickBtn_${i}" data-idx="${i}">
+      <div class="fact-pick-icon">${d.icon}</div>
+      <div class="fact-pick-name">${eh(d.name)}</div>
+      <div class="fact-pick-examples">${eh(d.examples)}</div>
+    </button>`).join('')}
+  </div>`;
+}
+
+function renderFactReveal(){
+  const bullets=S.factBullets||[];
+  const topic=S.factTopic||S.factDomain||'Today\'s topic';
+  const cards=bullets.length?bullets.map((b,i)=>`<div class="flip-card" id="flipCard_${i}">
+    <div class="flip-card-inner">
+      <div class="flip-card-front">Revealing fact ${i+1}…</div>
+      <div class="flip-card-back"><div class="flip-fact-label">Real fact ${i+1}</div><div class="flip-fact-text">${eh(b)}</div></div>
+    </div>
+  </div>`).join(''):'<p class="text-muted text-sm">No facts recorded for this session.</p>';
+  return`<div class="card text-center" style="padding:28px 20px 18px;">
+    <div style="font-size:2.2rem;margin-bottom:8px;">🔍</div>
+    <h2 class="mb4">What Was Real</h2>
+    <p class="text-muted text-sm">These facts from today's story are 100% true</p>
+    <p style="font-size:.82rem;font-weight:600;color:var(--accent);margin-top:6px;">${eh(topic)}</p>
+  </div>
+  <div class="card">
+    <div class="flip-cards">${cards}</div>
+    <button class="btn btn-primary btn-full mt8" id="goParentReviewBtn">Parent review →</button>
+  </div>`;
 }
 
 function renderSettings(){
@@ -865,6 +950,16 @@ function renderSettings(){
   <div class="card"><h3 class="mb12">Anthropic API Key</h3><label>API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Stored only in this browser.</p><div class="mt12"><button class="btn btn-secondary" id="saveApiKeyBtn">Save Key</button></div>${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}</div>
   <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many total questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Total questions</label><input type="number" id="numQInput" min="3" max="15" step="1" value="${nq}"><span class="text-muted text-sm"> (3–15)</span></div><div class="mt4"><label style="min-width:0;margin:0;">Math questions</label><input type="number" id="numMathQInput" min="1" max="5" step="1" value="${st.numMathQuestions||1}"><span class="text-muted text-sm"> (1–5, must be less than total)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
   <div class="card"><h3 class="mb4">Math Topics</h3><p class="text-muted text-sm mb12">Choose which math topics appear in ${eh(p.name)}'s sessions. At least one must be selected.</p>${ALL_MATH_DOMAINS.map(d=>{const active=st.customMathDomains?st.customMathDomains.includes(d):p.mathDomains.includes(d);return`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;"><input type="checkbox" class="math-domain-chk" value="${eh(d)}" ${active?'checked':''}><span>${eh(d)}</span></label>`;}).join('')}<div class="mt12"><button class="btn btn-primary" id="saveMathDomainsBtn">Save Topics</button></div></div>
+  <div class="card"><h3 class="mb4">Learning Topics</h3><p class="text-muted text-sm mb12">Stories weave in real facts from a rotating topic. Control what ${eh(p.name)} learns about.</p>
+  <label class="bold text-sm">Parent topic override</label><p class="text-muted text-sm mb8">Type anything specific — a chapter topic, a historical event, a science concept. Stays active until you clear it.</p>
+  <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;"><input type="text" id="factFreeformInput" placeholder="e.g., Battle of Bunker Hill" value="${eh(st.factDomainFreeform||'')}"><button class="btn btn-primary" id="saveFactFreeformBtn" style="white-space:nowrap;">Set</button>${st.factDomainFreeform?`<button class="btn btn-secondary" id="clearFactFreeformBtn" style="white-space:nowrap;">Clear</button>`:''}</div>
+  ${st.factDomainFreeform?`<div class="text-xs mt6" style="color:var(--warning);">Active override: "${eh(st.factDomainFreeform)}"</div>`:''}
+  <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
+  <label class="bold text-sm">Active topic categories</label><p class="text-muted text-sm mb8">Uncheck any topic to remove it from rotation.</p>
+  ${FACT_DOMAINS.map(d=>{const active=!st.factDomainsActive||st.factDomainsActive.includes(d.id);return`<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;"><input type="checkbox" class="fact-domain-chk" value="${d.id}" ${active?'checked':''}><span>${d.icon} ${eh(d.name)}</span></label>`;}).join('')}
+  <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
+  <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 0;"><input type="checkbox" id="factRepeatLimitChk" ${st.factDomainRepeatLimit?'checked':''}><span class="text-sm">Limit repeats — prevent the same topic 3 sessions in a row</span></label>
+  <div class="mt12"><button class="btn btn-primary" id="saveFactDomainsBtn">Save</button></div></div>
   <div class="card"><h3 class="mb4">Story Length</h3><p class="text-muted text-sm mb12">Shorter = faster session; longer = more to read.</p><label>Target word count: <strong id="wlDisplay">${wl}</strong> words</label><input type="range" id="wordLengthSlider" min="400" max="1200" step="50" value="${wl}" oninput="document.getElementById('wlDisplay').textContent=this.value"><div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px;"><span>400 (short)</span><span>1200 (long)</span></div><div class="mt12"><button class="btn btn-primary" id="saveWordLengthBtn">Save</button></div></div>`;
 }
 
@@ -879,7 +974,7 @@ function bindEvents(){
   on('settingsBtn','click',showPinModal);
   on('backHomeBtn','click',()=>goTo('home'));
   on('startNewBtn','click',handleStartNew);
-  on('continueBtn','click',()=>startSession('Continue the previous story.',true));
+  on('continueBtn','click',handleStartContinue);
   on('seenFirstPartBtn','click',()=>setState({screen:'decision'}));
   on('optABtn','click',(e)=>handleOptionChoice(e.currentTarget.dataset.choice));
   on('optBBtn','click',(e)=>handleOptionChoice(e.currentTarget.dataset.choice));
@@ -903,7 +998,13 @@ function bindEvents(){
   on('saveNumQBtn','click',handleSaveNumQ);
   on('saveMathDomainsBtn','click',handleSaveMathDomains);
   on('parentOverrideBtn','click',handleParentOverride);
+  on('seeRealBtn','click',()=>setState({screen:'fact-reveal'}));
+  on('saveFactFreeformBtn','click',handleSaveFactFreeform);
+  on('clearFactFreeformBtn','click',handleClearFactFreeform);
+  on('saveFactDomainsBtn','click',handleSaveFactDomains);
+  document.querySelectorAll('[id^="factPickBtn_"]').forEach(el=>el.addEventListener('click',()=>handleFactPick(parseInt(el.dataset.idx,10))));
   document.querySelectorAll('.choice-btn[data-letter]').forEach(el=>el.addEventListener('click',()=>handleChoiceSelect(el.dataset.letter)));
+  if(S.screen==='fact-reveal'){(S.factBullets||[]).forEach((_,i)=>{setTimeout(()=>{const c=document.getElementById(`flipCard_${i}`);if(c)c.classList.add('flipped');},i*1600+700);});}
   document.querySelectorAll('.q-dot[data-qi]').forEach(el=>el.addEventListener('click',()=>{const qi=parseInt(el.dataset.qi,10);setState({expandedQDot:S.expandedQDot===qi?null:qi});}));
   document.querySelectorAll('[id^="buyBtn_"]').forEach(el=>el.addEventListener('click',()=>handleBuyItem(el.dataset.itemid)));
   document.querySelectorAll('[id^="buyAvBtn_"]').forEach(el=>el.addEventListener('click',()=>handleBuyAvItem(el.dataset.itemid)));
@@ -933,7 +1034,49 @@ async function switchChild(id){
   }
 }
 
-function handleStartNew(){const t=val('topicInput').trim();if(!t){alert('Type a character and setting idea first!');return;}startSession(t,false);}
+function getActiveFactDomains(st){
+  if(!st.factDomainsActive||!st.factDomainsActive.length)return FACT_DOMAINS;
+  return FACT_DOMAINS.filter(d=>st.factDomainsActive.includes(d.id));
+}
+
+function buildFactPickOptions(st){
+  let pool=getActiveFactDomains(st);
+  if(st.factDomainRepeatLimit&&(st.factDomainRecentChoices||[]).length>=3){
+    const last3=st.factDomainRecentChoices.slice(-3);
+    if(last3.every(id=>id===last3[0])){
+      const filtered=pool.filter(d=>d.id!==last3[0]);
+      if(filtered.length)pool=filtered;
+    }
+  }
+  const idx=(st.factDomainIndex||0)%pool.length;
+  const optA=pool[idx];
+  const rest=pool.filter(d=>d.id!==optA.id);
+  const optB=rest.length?rest[Math.floor(Math.random()*rest.length)]:optA;
+  return[optA,optB];
+}
+
+function goToFactPick(topic,isContinuation){
+  const st=S.persistedState;
+  if(st.factDomainFreeform){
+    S.factDomain=st.factDomainFreeform;S.factDomainId='freeform';
+    S.pendingTopic=topic;S.pendingIsContinuation=isContinuation;
+    startSession(topic,isContinuation);
+    return;
+  }
+  const opts=buildFactPickOptions(st);
+  setState({screen:'fact-pick',factPickOptions:opts,pendingTopic:topic,pendingIsContinuation:isContinuation,error:null});
+}
+
+function handleStartNew(){const t=val('topicInput').trim();if(!t){alert('Type a character and setting idea first!');return;}goToFactPick(t,false);}
+function handleStartContinue(){goToFactPick('Continue the previous story.',true);}
+
+function handleFactPick(idx){
+  const domain=(S.factPickOptions||[])[idx];if(!domain)return;
+  S.factDomain=domain.name;S.factDomainId=domain.id;
+  const topic=S.pendingTopic||'';
+  const isCont=S.pendingIsContinuation||false;
+  startSession(topic,isCont);
+}
 
 async function startSession(topicInput,isContinuation){
   const p=S.activeProfile,st=S.persistedState,today=new Date();
@@ -944,7 +1087,7 @@ async function startSession(topicInput,isContinuation){
   const numQ=st.numQuestions||p.numQuestions;
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
   try{
-    const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName})}],'You are a skilled children\'s fiction writer.',3000);
+    const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||''})}],'You are a skilled children\'s fiction writer.',3000);
     if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story});
     else setState({screen:'story-detective',fullStory:story});
   }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
@@ -966,11 +1109,13 @@ async function handleReadyForQuestions(){
     const numQ=S.numQ||p.numQuestions;
     const numMathQ=st.numMathQuestions||1;
     const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
-    let qs;
-    try{qs=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());}
+    let parsed,qs,factBullets=[],factTopic='';
+    try{parsed=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());}
     catch{throw new Error('Could not parse questions. Please retry.');}
+    if(Array.isArray(parsed)){qs=parsed;}
+    else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
     if(!Array.isArray(qs)||qs.length<numQ)throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
-    setState({screen:'questions',questions:qs.slice(0,numQ),currentQ:0,score:0,answers:[],wrongAttempts:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null});
+    setState({screen:'questions',questions:qs.slice(0,numQ),currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
 }
 
@@ -1075,6 +1220,24 @@ function showPinModal(){
   input.addEventListener('keydown',e=>{if(e.key==='Enter')tryPin();});
 }
 
+function handleSaveFactFreeform(){
+  const v=val('factFreeformInput').trim();
+  const ns={...S.persistedState,factDomainFreeform:v||null};
+  S.persistedState=ns;saveState(S.activeProfile,ns);render();
+}
+function handleClearFactFreeform(){
+  const ns={...S.persistedState,factDomainFreeform:null};
+  S.persistedState=ns;saveState(S.activeProfile,ns);render();
+}
+function handleSaveFactDomains(){
+  const checked=[...document.querySelectorAll('.fact-domain-chk:checked')].map(el=>el.value);
+  if(!checked.length){alert('Select at least one learning topic.');return;}
+  const repeat=document.getElementById('factRepeatLimitChk')?.checked||false;
+  const ns={...S.persistedState,factDomainsActive:checked.length===FACT_DOMAINS.length?null:checked,factDomainRepeatLimit:repeat,factDomainIndex:0};
+  S.persistedState=ns;saveState(S.activeProfile,ns);
+  alert('Learning topics saved.');
+}
+
 function handleSaveMathDomains(){
   const checked=[...document.querySelectorAll('.math-domain-chk:checked')].map(el=>el.value);
   if(!checked.length){alert('Select at least one math topic.');return;}
@@ -1125,6 +1288,7 @@ async function handleConfirmSave(){
 
   const sessionEntry={
     date:todayStr,format:S.format,domain:S.mathDomain,
+    factDomain:S.factDomain||null,factTopic:S.factTopic||null,
     score,total:numQ,pointsEarned:sessionPts,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
@@ -1137,6 +1301,8 @@ async function handleConfirmSave(){
     ...st,...changes,
     lifeLessonIndex:(st.lifeLessonIndex+1)%LIFE_LESSONS.length,
     mathDomainIndex:(st.mathDomainIndex+1)%(st.customMathDomains&&st.customMathDomains.length?st.customMathDomains:p.mathDomains).length,
+    factDomainIndex:st.factDomainFreeform?st.factDomainIndex:(st.factDomainIndex+1)%Math.max(getActiveFactDomains(st).length,1),
+    factDomainRecentChoices:st.factDomainFreeform?st.factDomainRecentChoices||[]:[...(st.factDomainRecentChoices||[]),S.factDomainId||''].slice(-3),
     lastSessionDate:todayStr,sessionsCompletedToday:sessToday,
     consecutiveStreak:streak,domainCounts,detectiveCount,cypCount,
     perfectSessions,points:newPoints,sessionHistory:newHistory,
