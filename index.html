@@ -146,6 +146,9 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 .text-muted{color:var(--text2);}.text-sm{font-size:.85rem;}.text-xs{font-size:.75rem;}
 .text-success{color:var(--success);}.text-danger{color:var(--danger);}.text-warning{color:var(--warning);}.text-accent{color:var(--accent);}
 .bold{font-weight:700;}.text-center{text-align:center;}
+.history-story{font-size:.83rem;line-height:1.6;margin-top:10px;max-height:380px;overflow-y:auto;padding:10px 12px;background:var(--bg);border-radius:var(--rs);border:1px solid var(--border);}
+.history-story-toggle{cursor:pointer;font-size:.78rem;color:var(--accent);margin-top:8px;list-style:none;user-select:none;}
+.history-story-toggle::marker{display:none;}
 .pin-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:999;display:flex;align-items:center;justify-content:center;}
 .pin-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:28px 24px;width:min(320px,90vw);display:flex;flex-direction:column;gap:12px;}
 .pin-box h3{margin:0;font-size:1rem;}
@@ -182,23 +185,56 @@ const PROFILES = {
 };
 
 const ALL_BADGES = [
+  // ── Story formats ──
   {id:'detective_rookie',icon:'🔍',name:'Detective Rookie',desc:'Complete 3 Detective stories',check:(st)=>(st.detectiveCount||0)>=3},
   {id:'master_detective',icon:'🕵️',name:'Master Detective',desc:'Complete 10 Detective stories',check:(st)=>(st.detectiveCount||0)>=10},
   {id:'path_finder',icon:'🗺️',name:'Path Finder',desc:'Complete 3 Choose-Your-Path stories',check:(st)=>(st.cypCount||0)>=3},
   {id:'choice_master',icon:'⚡',name:'Choice Master',desc:'Complete 10 Choose-Your-Path stories',check:(st)=>(st.cypCount||0)>=10},
-  {id:'no_hints',icon:'🎯',name:'No Hints Needed',desc:'Perfect score, zero hints used',check:(st,sess)=>sess&&sess.allNoHint&&sess.score===sess.total},
-  {id:'comeback_kid',icon:'💪',name:'Comeback Kid',desc:'Recover from a wrong answer to finish strong',check:(st,sess)=>sess&&sess.hadComeback},
+  // ── Streaks & consistency ──
   {id:'week_streak',icon:'📅',name:'Week Streak',desc:'7 days in a row',check:(st)=>(st.consecutiveStreak||0)>=7},
   {id:'month_streak',icon:'🏆',name:'Month Streak',desc:'30 days in a row',check:(st)=>(st.consecutiveStreak||0)>=30},
-  {id:'reading_up',icon:'📚',name:'Reading Level Up',desc:'Reach a new reading level',check:(st,sess)=>sess&&sess.readingLevelUp},
-  {id:'math_up',icon:'🧮',name:'Math Level Up',desc:'Reach a new math level',check:(st,sess)=>sess&&sess.mathLevelUp},
+  {id:'double_session',icon:'🔥',name:'Double Session',desc:'Complete 2 sessions in one day',check:(st)=>(st.sessionsCompletedToday||0)>=2},
+  {id:'early_bird',icon:'🌅',name:'Early Bird',desc:'Complete a session before 9am',check:(st,sess)=>sess&&sess.earlyBird},
+  // ── Accuracy & skill ──
+  {id:'no_hints',icon:'🎯',name:'No Hints Needed',desc:'Perfect score, zero hints used',check:(st,sess)=>sess&&sess.allNoHint&&sess.score===sess.total},
+  {id:'comeback_kid',icon:'💪',name:'Comeback Kid',desc:'Recover from a wrong answer to finish strong',check:(st,sess)=>sess&&sess.hadComeback},
   {id:'sharpshooter',icon:'🏹',name:'Sharpshooter',desc:'5 perfect sessions total',check:(st)=>(st.perfectSessions||0)>=5},
+  {id:'hint_free_streak',icon:'🧠',name:'Pure Instinct',desc:'5 sessions completed with zero hints',check:(st)=>(st.sessionNoHintCount||0)>=5},
+  {id:'sharp_mind',icon:'💡',name:'Sharp Mind',desc:'3 perfect sessions in a row',check:(st)=>(st.consecutivePerfect||0)>=3},
+  {id:'first_try_10',icon:'🎯',name:'First Try',desc:'10 sessions with perfect score and no hints',check:(st)=>(st.perfectSessions||0)>=10},
+  // ── Math ──
+  {id:'math_up',icon:'🧮',name:'Math Level Up',desc:'Reach a new math level',check:(st,sess)=>sess&&sess.mathLevelUp},
   {id:'fractions_ace',icon:'🍕',name:'Fractions Ace',desc:'5 Fractions sessions',check:(st)=>(st.domainCounts?.Fractions||0)>=5},
   {id:'data_ace',icon:'📊',name:'Data Detective',desc:'5 Measurement & Data sessions',check:(st)=>(st.domainCounts?.['Measurement and Data']||0)>=5},
   {id:'algebra_ace',icon:'➕',name:'Algebra Ace',desc:'5 Algebra sessions',check:(st)=>(st.domainCounts?.Algebra||0)>=5},
   {id:'geometry_ace',icon:'📐',name:'Geometry Genius',desc:'5 Geometry sessions',check:(st)=>(st.domainCounts?.Geometry||0)>=5},
+  {id:'number_cruncher',icon:'🔢',name:'Number Cruncher',desc:'Math question right on first try, 15 sessions',check:(st)=>(st.mathCorrectFirstTryCount||0)>=15},
+  {id:'domain_master_math',icon:'🎲',name:'Domain Master',desc:'Answer math from 5 different domains',check:(st)=>Object.keys(st.domainCounts||{}).length>=5},
+  {id:'math_level_7',icon:'📈',name:'Math Wizard',desc:'Reach math level 7.0',check:(st)=>(st.mathLevel||0)>=7.0},
+  {id:'math_level_8',icon:'🧮',name:'Math Master',desc:'Reach math level 8.0',check:(st)=>(st.mathLevel||0)>=8.0},
+  // ── Reading ──
+  {id:'reading_up',icon:'📚',name:'Reading Level Up',desc:'Reach a new reading level',check:(st,sess)=>sess&&sess.readingLevelUp},
+  {id:'bookworm',icon:'📖',name:'Bookworm',desc:'Reach reading level 7.0',check:(st)=>(st.readingLevel||0)>=7.0},
+  {id:'avid_reader',icon:'📚',name:'Avid Reader',desc:'Reach reading level 8.0',check:(st)=>(st.readingLevel||0)>=8.0},
+  // ── Volume ──
+  {id:'century_club',icon:'💯',name:'Century Club',desc:'100 total correct answers',check:(st)=>(st.totalCorrect||0)>=100},
+  {id:'veteran',icon:'🎖️',name:'Veteran',desc:'25 sessions completed',check:(st)=>(st.sessionHistory||[]).length>=25},
+  {id:'champion',icon:'🏆',name:'Champion',desc:'50 sessions completed',check:(st)=>(st.sessionHistory||[]).length>=50},
+  // ── Points ──
   {id:'century',icon:'💯',name:'Century',desc:'Earn 100 total points',check:(st)=>(st.points||0)>=100},
   {id:'five_hundred',icon:'🌟',name:'Five Hundred',desc:'Earn 500 total points',check:(st)=>(st.points||0)>=500},
+  {id:'point_legend',icon:'💎',name:'Point Legend',desc:'Accumulate 1,000 total points',check:(st)=>(st.points||0)>=1000},
+  {id:'high_roller',icon:'🚀',name:'High Roller',desc:'Earn 150+ points in one session',check:(st,sess)=>sess&&(sess.pointsEarned||0)>=150},
+  {id:'big_spender',icon:'🛍️',name:'Big Spender',desc:'Purchase from the avatar shop',check:(st)=>(st.unlockedItems||[]).length>=1},
+  // ── Fact domains ──
+  {id:'history_buff',icon:'🏛️',name:'History Buff',desc:'5 sessions with history topics',check:(st)=>((st.factDomainCounts?.ancient_history||0)+(st.factDomainCounts?.world_history||0))>=5},
+  {id:'stargazer',icon:'🔭',name:'Stargazer',desc:'5 sessions with Astronomy',check:(st)=>(st.factDomainCounts?.astronomy||0)>=5},
+  {id:'nature_explorer',icon:'🦋',name:'Nature Explorer',desc:'5 sessions with Life or Earth Science',check:(st)=>((st.factDomainCounts?.life_science||0)+(st.factDomainCounts?.earth_science||0))>=5},
+  {id:'tech_geek',icon:'💡',name:'Tech Geek',desc:'5 sessions with Technology',check:(st)=>(st.factDomainCounts?.technology||0)>=5},
+  {id:'world_traveler',icon:'🌐',name:'World Traveler',desc:'5 sessions with Geography',check:(st)=>(st.factDomainCounts?.geography||0)>=5},
+  {id:'domain_explorer',icon:'🧭',name:'Domain Explorer',desc:'Try 5 different fact domains',check:(st)=>Object.keys(st.factDomainCounts||{}).filter(k=>(st.factDomainCounts||{})[k]>0).length>=5},
+  {id:'scholar',icon:'🎓',name:'Scholar',desc:'Complete sessions in all 10 fact domains',check:(st)=>Object.keys(st.factDomainCounts||{}).filter(k=>(st.factDomainCounts||{})[k]>0).length>=10},
+  {id:'fact_hunter',icon:'🔬',name:'Fact Hunter',desc:'Reveal "What Was Real" 15 times',check:(st)=>(st.factRevealCount||0)>=15},
 ];
 
 const STORE = {
@@ -295,11 +331,12 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
-function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,factDomainIndex:0,factDomainsActive:null,factDomainFreeform:null,factDomainRepeatLimit:false,factDomainRecentChoices:[],lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
+function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,factDomainIndex:0,factDomainsActive:null,factDomainFreeform:null,factDomainRepeatLimit:false,factDomainRecentChoices:[],lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},factDomainCounts:{},factRevealCount:0,sessionNoHintCount:0,totalCorrect:0,consecutivePerfect:0,mathCorrectFirstTryCount:0,sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
 function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
 function saveState(p,st){
-  try{localStorage.setItem(p.storageKey,JSON.stringify(st));}catch(e){console.error('Save failed',e);}
-  pushToSupabase(p.id,st).catch(()=>{});
+  const stamped={...st,_savedAt:Date.now()};
+  try{localStorage.setItem(p.storageKey,JSON.stringify(stamped));}catch(e){console.error('Save failed',e);}
+  pushToSupabase(p.id,stamped).catch(()=>{});
 }
 async function pushToSupabase(childId,state){
   await fetch(`${SB_URL}/rest/v1/child_state`,{
@@ -310,13 +347,22 @@ async function pushToSupabase(childId,state){
 }
 async function pullFromSupabase(p){
   try{
+    const localRaw=localStorage.getItem(p.storageKey);
+    const localTime=localRaw?JSON.parse(localRaw)._savedAt||0:0;
     const r=await fetch(`${SB_URL}/rest/v1/child_state?child_id=eq.${p.id}&select=state`,{
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
     });
     if(!r.ok)return null;
     const data=await r.json();
     if(!data||!data[0])return null;
-    return Object.assign(defaultState(p),data[0].state);
+    const remote=data[0].state;
+    const remoteTime=remote._savedAt||0;
+    if(remoteTime<=localTime){
+      // Local is at least as fresh — re-push local to Supabase to keep it in sync
+      if(localRaw&&localTime>0)pushToSupabase(p.id,JSON.parse(localRaw)).catch(()=>{});
+      return null;
+    }
+    return Object.assign(defaultState(p),remote);
   }catch{return null;}
 }
 function loadApiKey(){return localStorage.getItem(API_KEY_KEY)||'';}
@@ -903,7 +949,7 @@ function renderRewards(){
 function renderHistory(){
   const p=S.activeProfile,st=S.persistedState;
   const history=(st.sessionHistory||[]).slice().reverse();
-  const histHTML=history.length===0?'<p class="text-muted text-sm">No sessions completed yet.</p>':history.map(sess=>`<div class="history-session"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;"><div><div class="bold text-sm">${eh(sess.date)}</div><div class="text-xs text-muted">${eh(sess.format)} · Math: ${eh(sess.domain)}${sess.factTopic||sess.factDomain?` · 📚 ${eh(sess.factTopic||sess.factDomain)}`:''}</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="tag${sess.score===sess.total?' tag-success':''}">${sess.score}/${sess.total}</span><span class="text-xs text-warning">+${sess.pointsEarned||0} pts</span></div></div><div class="mt8">${(sess.questions||[]).map((q,qi)=>`<div class="history-q"><div style="display:flex;justify-content:space-between;gap:8px;"><div class="text-sm"><span class="bold">Q${qi+1}:</span> ${eh(q.q)}</div><div>${q.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${q.hintsUsed>0?` <span class="text-xs text-muted">${q.hintsUsed}h</span>`:''}</div></div>${q.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(q.userAnswer)}</div>`:''}<div class="text-xs mt4 text-muted">Answer: ${eh(q.fullAnswer)}</div></div>`).join('')}</div></div>`).join('');
+  const histHTML=history.length===0?'<p class="text-muted text-sm">No sessions completed yet.</p>':history.map(sess=>`<div class="history-session"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;"><div><div class="bold text-sm">${eh(sess.date)}</div><div class="text-xs text-muted">${eh(sess.format)} · Math: ${eh(sess.domain)}${sess.factTopic||sess.factDomain?` · 📚 ${eh(sess.factTopic||sess.factDomain)}`:''}</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="tag${sess.score===sess.total?' tag-success':''}">${sess.score}/${sess.total}</span><span class="text-xs text-warning">+${sess.pointsEarned||0} pts</span></div></div><div class="mt8">${(sess.questions||[]).map((q,qi)=>`<div class="history-q"><div style="display:flex;justify-content:space-between;gap:8px;"><div class="text-sm"><span class="bold">Q${qi+1}:</span> ${eh(q.q)}</div><div>${q.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${q.hintsUsed>0?` <span class="text-xs text-muted">${q.hintsUsed}h</span>`:''}</div></div>${q.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(q.userAnswer)}</div>`:''}<div class="text-xs mt4 text-muted">Answer: ${eh(q.fullAnswer)}</div></div>`).join('')}${sess.story?`<details class="mt8"><summary class="history-story-toggle">📖 View full story</summary><div class="history-story">${eh(sess.story)}</div></details>`:''}</div></div>`).join('');
   return`<div class="session-hdr"><div><h2>📋 ${eh(p.name)}'s Session History</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>${histHTML}`;
 }
 
@@ -998,7 +1044,7 @@ function bindEvents(){
   on('saveNumQBtn','click',handleSaveNumQ);
   on('saveMathDomainsBtn','click',handleSaveMathDomains);
   on('parentOverrideBtn','click',handleParentOverride);
-  on('seeRealBtn','click',()=>setState({screen:'fact-reveal'}));
+  on('seeRealBtn','click',()=>{const st=S.persistedState;const ns={...st,factRevealCount:(st.factRevealCount||0)+1};S.persistedState=ns;saveState(S.activeProfile,ns);setState({screen:'fact-reveal'});});
   on('saveFactFreeformBtn','click',handleSaveFactFreeform);
   on('clearFactFreeformBtn','click',handleClearFactFreeform);
   on('saveFactDomainsBtn','click',handleSaveFactDomains);
@@ -1284,13 +1330,26 @@ async function handleConfirmSave(){
   const cypCount=(st.cypCount||0)+(S.format==='Choose-Your-Path'?1:0);
   const allNoHint=(S.answers||[]).every(a=>(a.hintsUsed||0)===0);
   const hadComeback=(S.answers||[]).some((a,i)=>!a.correct&&(S.answers||[]).slice(i+1).some(b=>b.correct));
-  const perfectSessions=(st.perfectSessions||0)+(score===numQ&&allNoHint?1:0);
+  const isPerfectSession=score===numQ&&allNoHint;
+  const perfectSessions=(st.perfectSessions||0)+(isPerfectSession?1:0);
+  const consecutivePerfect=isPerfectSession?(st.consecutivePerfect||0)+1:0;
+  const sessionNoHintCount=(st.sessionNoHintCount||0)+(allNoHint?1:0);
+  const totalCorrect=(st.totalCorrect||0)+score;
+  const mathQ=(S.questions||[]).find(q=>q.type==='math');
+  const mathIdx=mathQ?(S.questions||[]).indexOf(mathQ):-1;
+  const mathAns=mathIdx>=0?(S.answers||[])[mathIdx]:null;
+  const mathFirstTry=!!(mathAns&&mathAns.correct&&(mathAns.hintsUsed||0)===0);
+  const mathCorrectFirstTryCount=(st.mathCorrectFirstTryCount||0)+(mathFirstTry?1:0);
+  const factDomainCounts={...(st.factDomainCounts||{})};
+  if(S.factDomainId&&S.factDomainId!=='freeform')factDomainCounts[S.factDomainId]=(factDomainCounts[S.factDomainId]||0)+1;
+  const earlyBird=new Date().getHours()<9;
 
   const sessionEntry={
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
-    score,total:numQ,pointsEarned:sessionPts,
+    score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
+    story:S.fullStory||'',
     questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
   };
 
@@ -1305,7 +1364,9 @@ async function handleConfirmSave(){
     factDomainRecentChoices:st.factDomainFreeform?st.factDomainRecentChoices||[]:[...(st.factDomainRecentChoices||[]),S.factDomainId||''].slice(-3),
     lastSessionDate:todayStr,sessionsCompletedToday:sessToday,
     consecutiveStreak:streak,domainCounts,detectiveCount,cypCount,
-    perfectSessions,points:newPoints,sessionHistory:newHistory,
+    perfectSessions,consecutivePerfect,sessionNoHintCount,totalCorrect,
+    mathCorrectFirstTryCount,factDomainCounts,
+    points:newPoints,sessionHistory:newHistory,
     lastStorySummary:st.lastStorySummary||'',
   };
 
