@@ -379,12 +379,39 @@ function saveState(p,st){
   try{localStorage.setItem(p.storageKey,JSON.stringify(stamped));}catch(e){console.error('Save failed',e);}
   pushToSupabase(p.id,stamped).catch(()=>{});
 }
+// Apply remote state from Supabase to localStorage WITHOUT re-stamping.
+// Calling saveState here would give stale remote data a fresh timestamp,
+// which can make it appear newer than actual local session data on the next load.
+function applyRemoteState(p,remote){
+  try{localStorage.setItem(p.storageKey,JSON.stringify(remote));}catch(e){console.error('Apply remote failed',e);}
+}
+// Guard against a race: pullFromSupabase() takes a moment (network round-trip).
+// If the parent saves a settings change WHILE that fetch is in flight, the fetch
+// resolves with data that was already stale by the time it lands. Before applying
+// a "remote wins" result, re-check localStorage's CURRENT timestamp (not the one
+// pullFromSupabase captured when it started) — if a save landed in the meantime,
+// local is now the newer copy and the remote result must be dropped, not applied.
+function applyRemoteIfStillNewer(p,remote){
+  if(!remote)return false;
+  try{
+    const currentRaw=localStorage.getItem(p.storageKey);
+    const currentLocalTime=currentRaw?(JSON.parse(currentRaw)._savedAt||0):0;
+    const remoteTime=remote._savedAt||0;
+    if(currentLocalTime>remoteTime)return false; // a newer local save happened during the fetch — keep it
+  }catch{}
+  applyRemoteState(p,remote);
+  S.persistedState=remote;
+  if(remote.activeTheme)applyTheme(remote.activeTheme);
+  render();
+  return true;
+}
 async function pushToSupabase(childId,state){
-  await fetch(`${SB_URL}/rest/v1/child_state`,{
+  const r=await fetch(`${SB_URL}/rest/v1/child_state`,{
     method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates'},
     body:JSON.stringify({child_id:childId,state,updated_at:new Date().toISOString()})
   });
+  if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
 async function pullFromSupabase(p){
   try{
@@ -688,7 +715,7 @@ let S={
   correctFeedback:null,
   loadingMsg:'',error:null,
   reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,
-  levelAnnouncements:[],newBadges:[],expandedQDot:null,
+  levelAnnouncements:[],newBadges:[],expandedQDot:null,syncStatus:null,
   factPickOptions:null,factDomain:null,factDomainId:null,
   factBullets:[],factTopic:null,
   pendingTopic:null,pendingIsContinuation:false,
@@ -714,7 +741,12 @@ function renderHome(){
   const badgeBanners=bbs.map(bid=>{const b=ALL_BADGES.find(x=>x.id===bid);return b?`<div class="level-announce mb8">${b.icon} New badge unlocked: <strong>${b.name}</strong></div>`:''}).join('');
   if(anns.length>0)setTimeout(()=>{S.levelAnnouncements=[];},50);
   if(bbs.length>0)setTimeout(()=>{S.newBadges=[];},50);
-  return banners+badgeBanners+`
+  const sync=S.syncStatus;
+  const syncBanner=sync==='saving'?`<div class="level-announce mb8" style="background:var(--card-bg);color:var(--text2);border:1px solid var(--border);">⏳ Saving session…</div>`
+    :sync==='ok'?`<div class="level-announce mb8" style="background:#14532d22;color:#4ade80;">✓ Session saved &amp; synced</div>`
+    :sync==='failed'?`<div class="level-announce mb8" style="background:#7f1d1d33;color:#f87171;">⚠️ Saved locally — cloud sync failed. Check your connection.</div>`:'';
+  if(sync==='ok')setTimeout(()=>{S.syncStatus=null;render();},3000);
+  return banners+badgeBanners+syncBanner+`
   <div class="top-nav">${renderSwitcher()}<div class="top-nav-right"><span class="points-pill" id="rewardsNavBtn">⭐ ${st.points||0} pts</span></div></div>
   <div class="session-hdr">
     <div style="display:flex;align-items:center;gap:14px;">${renderAvatar(st.avatarEquipped,72)}<div><h1>Hey ${eh(p.name)}! 👋</h1><p class="text-muted">${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p></div></div>
@@ -1113,12 +1145,7 @@ async function switchChild(id){
   if(st.activeTheme)applyTheme(st.activeTheme);
   setState({activeProfile:p,persistedState:st,screen:'home',error:null,levelAnnouncements:[],newBadges:[]});
   const remote=await pullFromSupabase(p);
-  if(remote){
-    saveState(p,remote);
-    S.persistedState=remote;
-    if(remote.activeTheme)applyTheme(remote.activeTheme);
-    render();
-  }
+  applyRemoteIfStillNewer(p,remote);
 }
 
 function getActiveFactDomains(st){
@@ -1416,13 +1443,19 @@ async function handleConfirmSave(){
   newState.badges=[...(st.badges||[]),...newBadgeIds];
 
   // *** SAVE IMMEDIATELY — before any async operations ***
-  saveState(p,newState);
-  setState({persistedState:newState,screen:'home',levelAnnouncements:announcements,newBadges:newBadgeIds,error:null});
+  const stamped={...newState,_savedAt:Date.now()};
+  try{localStorage.setItem(p.storageKey,JSON.stringify(stamped));}catch(e){console.error('Save failed',e);}
+  setState({persistedState:stamped,screen:'home',levelAnnouncements:announcements,newBadges:newBadgeIds,error:null,syncStatus:'saving'});
+
+  // Push to Supabase and surface the result so parent can see if it failed
+  pushToSupabase(p.id,stamped)
+    .then(()=>{ setState({syncStatus:'ok'}); })
+    .catch(()=>{ setState({syncStatus:'failed'}); });
 
   // Update story summary in background — won't block anything
   callClaude([{role:'user',content:buildSummaryPrompt(S.fullStory||'')}],'You write brief story summaries.',300)
     .then(summary=>{
-      const updated={...newState,lastStorySummary:summary};
+      const updated={...stamped,lastStorySummary:summary};
       saveState(p,updated);
       S.persistedState=updated; // update in memory without re-render
     })
@@ -1499,12 +1532,7 @@ function ea(s){if(!s)return'';return String(s).replace(/"/g,'&quot;').replace(/'
     render();
     // Then pull from Supabase and update if data exists there
     const remote=await pullFromSupabase(p);
-    if(remote){
-      saveState(p,remote); // also updates localStorage
-      S.persistedState=remote;
-      if(remote.activeTheme)applyTheme(remote.activeTheme);
-      render();
-    }
+    applyRemoteIfStillNewer(p,remote);
   } else {
     render();
   }
