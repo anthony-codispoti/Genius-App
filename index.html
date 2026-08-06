@@ -379,6 +379,15 @@ function saveState(p,st){
   try{localStorage.setItem(p.storageKey,JSON.stringify(stamped));}catch(e){console.error('Save failed',e);}
   pushToSupabase(p.id,stamped).catch(()=>{});
 }
+// Like saveState, but WAITS for the cloud push and reports whether it actually
+// succeeded — for settings changes where a silent failure would otherwise hide
+// until local storage gets cleared days later and the stale cloud copy reasserts.
+async function saveStateSynced(p,st){
+  const stamped={...st,_savedAt:Date.now()};
+  try{localStorage.setItem(p.storageKey,JSON.stringify(stamped));}catch(e){console.error('Save failed',e);}
+  try{await pushToSupabase(p.id,stamped);return{stamped,synced:true};}
+  catch{return{stamped,synced:false};}
+}
 // Apply remote state from Supabase to localStorage WITHOUT re-stamping.
 // Calling saveState here would give stale remote data a fresh timestamp,
 // which can make it appear newer than actual local session data on the next load.
@@ -1462,16 +1471,17 @@ async function handleConfirmSave(){
     .catch(()=>{}); // silently ignore — summary is non-critical
 }
 
-function handleSaveNumQ(){
+async function handleSaveNumQ(){
   const v=parseInt(val('numQInput'),10);
   const m=parseInt(val('numMathQInput'),10);
   if(!v||v<3||v>15){alert('Total questions must be between 3 and 15.');return;}
   if(!m||m<1||m>5){alert('Math questions must be between 1 and 5.');return;}
   if(m>=v){alert('Math questions must be less than total questions.');return;}
   const ns={...S.persistedState,numQuestions:v,numMathQuestions:m};
-  saveState(S.activeProfile,ns);
-  setState({persistedState:ns});
-  alert(`Saved: ${v} total questions, ${m} math question${m>1?'s':''} per session for ${S.activeProfile.name}.`);
+  const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
+  setState({persistedState:stamped});
+  if(synced)alert(`Saved: ${v} total questions, ${m} math question${m>1?'s':''} per session for ${S.activeProfile.name}.`);
+  else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
 }
 
 function handleBuyAvItem(itemId){
@@ -1492,13 +1502,14 @@ function handleEquipAvItem(slot,itemId){
   saveState(S.activeProfile,ns);setState({persistedState:ns});
 }
 
-function handleSaveWordLength(){
+async function handleSaveWordLength(){
   const v=parseInt(val('wordLengthSlider'),10);
   if(!v||v<400||v>1200)return;
   const ns={...S.persistedState,storyWordLength:v};
-  saveState(S.activeProfile,ns);
-  setState({persistedState:ns});
-  alert(`Story length saved: ${v} words.`);
+  const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
+  setState({persistedState:stamped});
+  if(synced)alert(`Story length saved: ${v} words.`);
+  else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
 }
 
 function handleBuyItem(itemId){
