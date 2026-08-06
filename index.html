@@ -180,8 +180,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Fractions','Measurement and Data','Fractions','Measurement and Data','Algebra','Geometry'],numQuestions:5},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Fractions','Measurement and Data','Fractions','Measurement and Data','Algebra','Geometry'],numQuestions:5,interests:['football','Fortnite']},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft']},
 };
 
 const ALL_BADGES = [
@@ -372,7 +372,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
-function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,factDomainIndex:0,factDomainsActive:null,factDomainFreeform:null,factDomainRepeatLimit:false,factDomainRecentChoices:[],lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},factDomainCounts:{},factRevealCount:0,sessionNoHintCount:0,totalCorrect:0,consecutivePerfect:0,mathCorrectFirstTryCount:0,sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
+function defaultState(p){return{readingLevel:p.startReadingLevel,mathLevel:p.startMathLevel,readingConsec5:0,readingConseqLow:0,mathConsec5:0,mathConseqLow:0,lifeLessonIndex:0,mathDomainIndex:0,factDomainIndex:0,factDomainsActive:null,factDomainFreeform:null,factDomainRepeatLimit:false,factDomainRecentChoices:[],lastSessionDate:null,sessionsCompletedToday:0,lastStorySummary:null,points:0,badges:[],unlockedItems:[],activeTheme:null,heroName:null,detectiveCount:0,cypCount:0,perfectSessions:0,consecutiveStreak:0,domainCounts:{},factDomainCounts:{},factRevealCount:0,sessionNoHintCount:0,totalCorrect:0,consecutivePerfect:0,mathCorrectFirstTryCount:0,sessionHistory:[],storyWordLength:p.defaultStoryWords,numQuestions:null,numMathQuestions:null,numFactQuestions:0,factIntensity:null,customMathDomains:null,avatarEquipped:{hat:null,outfit:null,accessory:null,pet:null,background:null,trail:null}};}
 function loadState(p){try{const r=localStorage.getItem(p.storageKey);return r?Object.assign(defaultState(p),JSON.parse(r)):defaultState(p);}catch{return defaultState(p);}}
 function saveState(p,st){
   const stamped={...st,_savedAt:Date.now()};
@@ -571,7 +571,7 @@ Reply ONLY with: {"correct":true} or {"correct":false}`;
 }
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain}){
+function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain,factCount}){
   const isCYP=format==='Choose-Your-Path';
   const part1Words=Math.round(wordLength*0.6);
   const formatInst=isCYP
@@ -579,13 +579,15 @@ function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,life
     :`FORMAT: Detective Mystery.\nBuild a mystery solvable only through careful reading. The math situation is the key clue. Resolve it by the end. ~${wordLength} words.`;
   const heroNote=heroName?`\nUse "${heroName}" as the main character or sidekick name.`:'';
   const contNote=storySummary?`\nCONTINUITY (only if topic asks to continue): ${storySummary}`:'';
+  const fc=factCount||3;
+  const interestNote=(profile.interests&&profile.interests.length)?`\n- If — and only if — it fits this specific domain and topic naturally, you may frame one fact or scene through something ${profile.name} loves (${profile.interests.join(', ')}). Never force it, and never let it override or replace the topic itself — skip it entirely rather than make it feel bolted on.`:'';
   const factNote=factDomain?`
 FACTUAL LEARNING DOMAIN: ${factDomain}
 - Choose ONE narrow, specific angle within this domain (e.g., not "ancient Rome" but "how Roman aqueducts brought water to cities")
-- Weave 3–4 real, accurate facts into the plot — the character USES or DISCOVERS them to solve problems, never lectures about them
+- Weave ${fc} real, accurate facts into the plot — the character USES or DISCOVERS them to solve problems, never lectures about them
 - Facts must be well-established and unambiguous — no contested science or history
 - Measurements: use imperial first (feet, miles, pounds, °F) with metric in parentheses on first use — e.g., "15 miles (24 km)"
-- The factual content should feel like a natural part of the adventure, not a school lesson`:'';
+- The factual content should feel like a natural part of the adventure, not a school lesson${interestNote}`:'';
   return `You are writing a story for ${profile.name}, age ${profile.age}, entering ${profile.grade} grade.
 
 STYLE: ${profile.sentenceComplexity}${heroNote}
@@ -620,10 +622,12 @@ Choice made: "${choice}"
 Write the continuation (~${Math.round(wordLength*0.4)} words). End the story satisfyingly.`;
 }
 
-function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ,numMathQ}){
+function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ,numMathQ,numFactQ,factCount}){
   const n=numQ||profile.numQuestions;
   const nm=numMathQ||1;
-  const nr=n-nm;
+  const nf=numFactQ||0;
+  const fc=factCount||3;
+  const nGeneral=Math.max(n-nm-nf-1,0); // 1 slot reserved for the mandatory "lesson" question
   return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)}.
 
 Story:
@@ -654,7 +658,12 @@ MATH QUESTIONS (exactly ${nm}, type "math"):
    - Each must use different numbers from the story
    - Example: "What is the total if [story numbers]? Calculate it."
    - full_answer must show the calculation steps and final number
-
+${nf>0?`
+FACT QUESTIONS (exactly ${nf}, type "fact"):
+   - Ask directly about one of the real-world facts you list in fact_bullets below — something stated plainly in the story, not requiring outside knowledge
+   - Do NOT quiz plot details here, only the factual/educational content
+   - Gets a "choices" array + "correct_choice" just like a general question (see MULTIPLE CHOICE below)
+`:''}
 ACCEPTABLE VARIANTS (critical for fair grading):
    For every question, list 4-8 different ways a child might correctly express the answer.
    Think of short answers, long answers, different word choices, number formats.
@@ -668,7 +677,7 @@ HINTS:
    hint3_partial: First half of the answer, cut mid-sentence
 
 MULTIPLE CHOICE (non-math questions ONLY):
-   For every "general" and "lesson" question, add a "choices" array with exactly 4 options and a "correct_choice" field:
+   For every "general", "lesson", and "fact" question, add a "choices" array with exactly 4 options and a "correct_choice" field:
    - "choices": ["A. [correct or wrong answer]","B. ...","C. ...","D. ..."]
    - "correct_choice": "A" (or B, C, D — whichever letter holds the correct answer)
    - Randomize which letter is correct each time
@@ -676,23 +685,22 @@ MULTIPLE CHOICE (non-math questions ONLY):
    - Do NOT include "acceptable_variants" for these — just choices + correct_choice
    Math questions stay as typed-answer format (no choices).
 
-Return a JSON array of exactly ${n} objects:
-Return a JSON OBJECT (not array) with two keys:
+Return a JSON OBJECT (not array) with these keys:
 {
   "fact_topic": "The specific subtopic you chose (e.g., 'Roman aqueducts' or 'how volcanoes form')",
-  "fact_bullets": ["Short punchy real-world fact 1","Short punchy real-world fact 2","Short punchy real-world fact 3"],
+  "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
-    non-math: {"q":"...","type":"lesson|general","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
+    non-math: {"q":"...","type":"lesson|general|fact","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
     math:      {"q":"...","type":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
   ]
 }
 
 - fact_topic: the specific angle you picked (one phrase, e.g. "Roman aqueducts")
-- fact_bullets: exactly 3 real facts from the domain — short, punchy, surprising. NOT summaries of the story. Real-world truths that appeared in the story.
+- fact_bullets: exactly ${fc} real facts from the domain — short, punchy, surprising. NOT summaries of the story. Real-world truths that appeared in the story.
 - questions array: exactly ${n} questions total
   - Exactly ${nm} type "math"
-  - Exactly 1 type "lesson" (about what a character DID, not how they felt)
-  - Remaining ${nr-1} type "general"
+  ${nf>0?`- Exactly ${nf} type "fact"\n  `:''}- Exactly 1 type "lesson" (about what a character DID, not how they felt)
+  - Remaining ${nGeneral} type "general"
 - Return ONLY the JSON object, nothing else`;
 }
 
@@ -1076,9 +1084,12 @@ function renderSettings(){
   const nq=st.numQuestions||p.numQuestions;
   return`<div class="session-hdr"><div><h2>⚙ Settings — ${eh(p.name)}</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>
   <div class="card"><h3 class="mb12">Anthropic API Key</h3><label>API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Stored only in this browser.</p><div class="mt12"><button class="btn btn-secondary" id="saveApiKeyBtn">Save Key</button></div>${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}</div>
-  <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many total questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Total questions</label><input type="number" id="numQInput" min="3" max="15" step="1" value="${nq}"><span class="text-muted text-sm"> (3–15)</span></div><div class="mt4"><label style="min-width:0;margin:0;">Math questions</label><input type="number" id="numMathQInput" min="1" max="5" step="1" value="${st.numMathQuestions||1}"><span class="text-muted text-sm"> (1–5, must be less than total)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
+  <div class="card"><h3 class="mb4">Questions Per Session</h3><p class="text-muted text-sm mb12">How many total questions ${eh(p.name)} answers each session.</p><div class="pr-field"><label style="min-width:0;margin:0;">Total questions</label><input type="number" id="numQInput" min="3" max="15" step="1" value="${nq}"><span class="text-muted text-sm"> (3–15)</span></div><div class="mt4"><label style="min-width:0;margin:0;">Math questions</label><input type="number" id="numMathQInput" min="1" max="5" step="1" value="${st.numMathQuestions||1}"><span class="text-muted text-sm"> (1–5, must be less than total)</span></div><div class="mt4"><label style="min-width:0;margin:0;">Fact questions</label><input type="number" id="numFactQInput" min="0" max="3" step="1" value="${st.numFactQuestions||0}"><span class="text-muted text-sm"> (0–3, optional — quizzes on the real facts woven into the story)</span></div><div class="mt12"><button class="btn btn-primary" id="saveNumQBtn">Save</button></div></div>
   <div class="card"><h3 class="mb4">Math Topics</h3><p class="text-muted text-sm mb12">Choose which math topics appear in ${eh(p.name)}'s sessions. At least one must be selected.</p>${ALL_MATH_DOMAINS.map(d=>{const active=st.customMathDomains?st.customMathDomains.includes(d):p.mathDomains.includes(d);return`<label style="display:flex;align-items:center;gap:8px;padding:6px 0;cursor:pointer;"><input type="checkbox" class="math-domain-chk" value="${eh(d)}" ${active?'checked':''}><span>${eh(d)}</span></label>`;}).join('')}<div class="mt12"><button class="btn btn-primary" id="saveMathDomainsBtn">Save Topics</button></div></div>
   <div class="card"><h3 class="mb4">Learning Topics</h3><p class="text-muted text-sm mb12">Stories weave in real facts from a rotating topic. Control what ${eh(p.name)} learns about.</p>
+  <label class="bold text-sm">Facts woven into story</label><p class="text-muted text-sm mb8">How many real facts get built into the plot (revealed after in "What Was Real"). Light keeps it subtle; rich packs in more.</p>
+  <div class="pr-field"><label style="min-width:0;margin:0;">Fact count</label><input type="number" id="factIntensityInput" min="2" max="5" step="1" value="${st.factIntensity||3}"><span class="text-muted text-sm"> (2–5)</span></div>
+  <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
   <label class="bold text-sm">Parent topic override</label><p class="text-muted text-sm mb8">Type anything specific — a chapter topic, a historical event, a science concept. Stays active until you clear it.</p>
   <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;"><input type="text" id="factFreeformInput" placeholder="e.g., Battle of Bunker Hill" value="${eh(st.factDomainFreeform||'')}"><button class="btn btn-primary" id="saveFactFreeformBtn" style="white-space:nowrap;">Set</button>${st.factDomainFreeform?`<button class="btn btn-secondary" id="clearFactFreeformBtn" style="white-space:nowrap;">Clear</button>`:''}</div>
   ${st.factDomainFreeform?`<div class="text-xs mt6" style="color:var(--warning);">Active override: "${eh(st.factDomainFreeform)}"</div>`:''}
@@ -1210,7 +1221,7 @@ async function startSession(topicInput,isContinuation){
   const numQ=st.numQuestions||p.numQuestions;
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
   try{
-    const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||''})}],'You are a skilled children\'s fiction writer.',3000);
+    const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3})}],'You are a skilled children\'s fiction writer.',3000);
     if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story});
     else setState({screen:'story-detective',fullStory:story});
   }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
@@ -1231,7 +1242,10 @@ async function handleReadyForQuestions(){
   try{
     const numQ=S.numQ||p.numQuestions;
     const numMathQ=st.numMathQuestions||1;
-    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
+    // Clamp in case numQuestions was later lowered below a combo saved earlier — always leave room for the mandatory lesson question.
+    const numFactQ=Math.min(st.numFactQuestions||0,Math.max(numQ-numMathQ-1,0));
+    const factCount=st.factIntensity||3;
+    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
     let parsed,qs,factBullets=[],factTopic='';
     try{parsed=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());}
     catch{throw new Error('Could not parse questions. Please retry.');}
@@ -1352,13 +1366,17 @@ function handleClearFactFreeform(){
   const ns={...S.persistedState,factDomainFreeform:null};
   S.persistedState=ns;saveState(S.activeProfile,ns);render();
 }
-function handleSaveFactDomains(){
+async function handleSaveFactDomains(){
   const checked=[...document.querySelectorAll('.fact-domain-chk:checked')].map(el=>el.value);
   if(!checked.length){alert('Select at least one learning topic.');return;}
   const repeat=document.getElementById('factRepeatLimitChk')?.checked||false;
-  const ns={...S.persistedState,factDomainsActive:checked.length===FACT_DOMAINS.length?null:checked,factDomainRepeatLimit:repeat,factDomainIndex:0};
-  S.persistedState=ns;saveState(S.activeProfile,ns);
-  alert('Learning topics saved.');
+  const fi=parseInt(val('factIntensityInput'),10);
+  if(!fi||fi<2||fi>5){alert('Fact count must be between 2 and 5.');return;}
+  const ns={...S.persistedState,factDomainsActive:checked.length===FACT_DOMAINS.length?null:checked,factDomainRepeatLimit:repeat,factDomainIndex:0,factIntensity:fi};
+  const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
+  setState({persistedState:stamped});
+  if(synced)alert('Learning topics saved.');
+  else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
 }
 
 function handleSaveMathDomains(){
@@ -1474,13 +1492,15 @@ async function handleConfirmSave(){
 async function handleSaveNumQ(){
   const v=parseInt(val('numQInput'),10);
   const m=parseInt(val('numMathQInput'),10);
+  const f=parseInt(val('numFactQInput'),10)||0;
   if(!v||v<3||v>15){alert('Total questions must be between 3 and 15.');return;}
   if(!m||m<1||m>5){alert('Math questions must be between 1 and 5.');return;}
-  if(m>=v){alert('Math questions must be less than total questions.');return;}
-  const ns={...S.persistedState,numQuestions:v,numMathQuestions:m};
+  if(f<0||f>3){alert('Fact questions must be between 0 and 3.');return;}
+  if(m+f>=v){alert('Math + fact questions must leave room for at least one lesson question — lower one of them or raise the total.');return;}
+  const ns={...S.persistedState,numQuestions:v,numMathQuestions:m,numFactQuestions:f};
   const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
   setState({persistedState:stamped});
-  if(synced)alert(`Saved: ${v} total questions, ${m} math question${m>1?'s':''} per session for ${S.activeProfile.name}.`);
+  if(synced)alert(`Saved: ${v} total questions, ${m} math question${m>1?'s':''}, ${f} fact question${f===1?'':'s'} per session for ${S.activeProfile.name}.`);
   else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
 }
 
