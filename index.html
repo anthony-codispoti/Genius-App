@@ -388,6 +388,33 @@ async function saveStateSynced(p,st){
   try{await pushToSupabase(p.id,stamped);return{stamped,synced:true};}
   catch{return{stamped,synced:false};}
 }
+// The freshest known copy of a profile's state, checked in the same priority
+// pullFromSupabase already uses: Supabase wins if its _savedAt is newer than
+// THIS device's localStorage, otherwise localStorage wins. Anything that
+// spreads "current state + one change" and saves should build on this, not
+// on the in-memory S.persistedState — a device left open across a settings
+// change made elsewhere still has the newest wall-clock time when it next
+// saves, so a plain timestamp check can't catch it; only re-checking the
+// actual content right before the write can.
+async function freshestState(p){
+  const remote=await pullFromSupabase(p).catch(()=>null);
+  if(remote)return remote;
+  try{const raw=localStorage.getItem(p.storageKey);if(raw)return JSON.parse(raw);}catch{}
+  return S.persistedState||defaultState(p);
+}
+// Fields a parent controls from Settings. Used to re-sync just these onto a
+// possibly-stale in-memory state before a gameplay save writes the whole
+// blob back — so finishing a session never silently reverts a settings
+// change made on another device (or an earlier, unreloaded tab) in the
+// meantime, without touching the session's own progress/points arithmetic.
+const SETTINGS_FIELDS=['numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
+// Save a pure settings change: baseline against the freshest known state
+// (not just whatever's in memory) before merging in the caller's edit.
+async function saveSettingsSynced(p,mutateFn){
+  const baseline=await freshestState(p);
+  const ns=mutateFn(baseline);
+  return await saveStateSynced(p,ns);
+}
 // Apply remote state from Supabase to localStorage WITHOUT re-stamping.
 // Calling saveState here would give stale remote data a fresh timestamp,
 // which can make it appear newer than actual local session data on the next load.
@@ -1357,14 +1384,14 @@ function showPinModal(){
   input.addEventListener('keydown',e=>{if(e.key==='Enter')tryPin();});
 }
 
-function handleSaveFactFreeform(){
+async function handleSaveFactFreeform(){
   const v=val('factFreeformInput').trim();
-  const ns={...S.persistedState,factDomainFreeform:v||null};
-  S.persistedState=ns;saveState(S.activeProfile,ns);render();
+  const{stamped}=await saveSettingsSynced(S.activeProfile,baseline=>({...baseline,factDomainFreeform:v||null}));
+  setState({persistedState:stamped});
 }
-function handleClearFactFreeform(){
-  const ns={...S.persistedState,factDomainFreeform:null};
-  S.persistedState=ns;saveState(S.activeProfile,ns);render();
+async function handleClearFactFreeform(){
+  const{stamped}=await saveSettingsSynced(S.activeProfile,baseline=>({...baseline,factDomainFreeform:null}));
+  setState({persistedState:stamped});
 }
 async function handleSaveFactDomains(){
   const checked=[...document.querySelectorAll('.fact-domain-chk:checked')].map(el=>el.value);
@@ -1372,20 +1399,20 @@ async function handleSaveFactDomains(){
   const repeat=document.getElementById('factRepeatLimitChk')?.checked||false;
   const fi=parseInt(val('factIntensityInput'),10);
   if(!fi||fi<2||fi>5){alert('Fact count must be between 2 and 5.');return;}
-  const ns={...S.persistedState,factDomainsActive:checked.length===FACT_DOMAINS.length?null:checked,factDomainRepeatLimit:repeat,factDomainIndex:0,factIntensity:fi};
-  const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
+  const{stamped,synced}=await saveSettingsSynced(S.activeProfile,baseline=>({...baseline,factDomainsActive:checked.length===FACT_DOMAINS.length?null:checked,factDomainRepeatLimit:repeat,factDomainIndex:0,factIntensity:fi}));
   setState({persistedState:stamped});
   if(synced)alert('Learning topics saved.');
   else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
 }
 
-function handleSaveMathDomains(){
+async function handleSaveMathDomains(){
   const checked=[...document.querySelectorAll('.math-domain-chk:checked')].map(el=>el.value);
   if(!checked.length){alert('Select at least one math topic.');return;}
-  const p=S.activeProfile,st=S.persistedState;
-  const newSt={...st,customMathDomains:checked,mathDomainIndex:0};
-  S.persistedState=newSt;saveState(p,newSt);
-  alert(`Saved! ${eh(p.name)}'s math topics updated.`);
+  const p=S.activeProfile;
+  const{stamped,synced}=await saveSettingsSynced(p,baseline=>({...baseline,customMathDomains:checked,mathDomainIndex:0}));
+  setState({persistedState:stamped});
+  if(synced)alert(`Saved! ${eh(p.name)}'s math topics updated.`);
+  else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
 }
 
 async function handleClarify(){
@@ -1398,7 +1425,22 @@ async function handleClarify(){
 
 // ─── Confirm Save — save FIRST, then update summary in background ──────────────
 async function handleConfirmSave(){
-  const p=S.activeProfile,st=S.persistedState;
+  const p=S.activeProfile;
+  let st=S.persistedState;
+  // Re-sync just the parent-controlled settings fields against the freshest
+  // known copy before writing this session's progress back. Finishing a
+  // session saves the WHOLE state blob — if this device's in-memory copy is
+  // stale (left open across a settings change made elsewhere), that write's
+  // timestamp is still genuinely the newest one, so it would otherwise
+  // silently revert the setting. Progress fields (points, badges, levels,
+  // streaks) are intentionally left alone — they reflect what actually
+  // happened in this session on this device.
+  try{
+    const baseline=await freshestState(p);
+    const patch={};
+    SETTINGS_FIELDS.forEach(k=>{if(baseline[k]!==undefined)patch[k]=baseline[k];});
+    st={...st,...patch};
+  }catch{}
   const score=S.reviewScore!==null?S.reviewScore:S.score;
   const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
   const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
@@ -1497,8 +1539,7 @@ async function handleSaveNumQ(){
   if(!m||m<1||m>5){alert('Math questions must be between 1 and 5.');return;}
   if(f<0||f>3){alert('Fact questions must be between 0 and 3.');return;}
   if(m+f>=v){alert('Math + fact questions must leave room for at least one lesson question — lower one of them or raise the total.');return;}
-  const ns={...S.persistedState,numQuestions:v,numMathQuestions:m,numFactQuestions:f};
-  const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
+  const{stamped,synced}=await saveSettingsSynced(S.activeProfile,baseline=>({...baseline,numQuestions:v,numMathQuestions:m,numFactQuestions:f}));
   setState({persistedState:stamped});
   if(synced)alert(`Saved: ${v} total questions, ${m} math question${m>1?'s':''}, ${f} fact question${f===1?'':'s'} per session for ${S.activeProfile.name}.`);
   else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
@@ -1525,8 +1566,7 @@ function handleEquipAvItem(slot,itemId){
 async function handleSaveWordLength(){
   const v=parseInt(val('wordLengthSlider'),10);
   if(!v||v<400||v>1200)return;
-  const ns={...S.persistedState,storyWordLength:v};
-  const{stamped,synced}=await saveStateSynced(S.activeProfile,ns);
+  const{stamped,synced}=await saveSettingsSynced(S.activeProfile,baseline=>({...baseline,storyWordLength:v}));
   setState({persistedState:stamped});
   if(synced)alert(`Story length saved: ${v} words.`);
   else alert(`Saved on this device, but the cloud sync failed — check your internet connection. If it's still not synced when you reopen Settings, this change may not survive on other devices.`);
