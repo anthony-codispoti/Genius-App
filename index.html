@@ -523,30 +523,47 @@ function renderAvatar(eq,size){
   const w=Math.round(120*sc),h=size;
   return`<svg viewBox="0 0 120 160" width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" class="avatar-wrap">
 <rect width="120" height="160" rx="12" fill="var(--surface2)"/>${bgSvg}
-${petSvg}${capeSvg}
-<rect x="38" y="126" width="18" height="26" rx="5" fill="#334155"/>
-<rect x="64" y="126" width="18" height="26" rx="5" fill="#334155"/>
-<ellipse cx="47" cy="154" rx="13" ry="5" fill="#1e293b"/>
-<ellipse cx="73" cy="154" rx="13" ry="5" fill="#1e293b"/>
-<rect x="10" y="85" width="24" height="34" rx="10" fill="${bc}"/>
-<rect x="86" y="85" width="24" height="34" rx="10" fill="${bc}"/>
-<rect x="34" y="82" width="52" height="48" rx="10" fill="${bc}"/>
+${capeSvg}
+<defs><linearGradient id="avSkinG" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#ffdcb8"/><stop offset="100%" stop-color="#f0b98c"/></linearGradient></defs>
+<ellipse cx="60" cy="158" rx="26" ry="4" fill="#000" opacity=".18"/>
+<path d="M85,88 Q101,96 100,112 Q100,120 94,123" fill="none" stroke="url(#avSkinG)" stroke-width="15" stroke-linecap="round"/>
+<path d="M41,124 Q38,140 38,151 Q38,157 41,159 L54,159 Q56,157 55,151 Q54,140 55,124 Z" fill="#334155"/>
+<path d="M65,124 Q64,140 65,151 Q64,157 66,159 L79,159 Q82,157 81,151 Q82,140 79,124 Z" fill="#2b3546"/>
+<path d="M41,124 Q38,140 38,151 Q38,157 41,159 L46,159 Q44,157 45,151 Q45,140 47,124 Z" fill="#000" opacity=".12"/>
+<path d="M36,151 Q34,158 39,160 L57,160 Q59,160 58,155 L54,151 Z" fill="#e8e8ec"/>
+<path d="M36,157 L58,157 L58,160 Q58,160.5 56,160.5 L38,160.5 Q35,160.5 36,157Z" fill="#c23b3b"/>
+<path d="M63,151 Q61,158 66,160 L84,160 Q86,160 85,155 L81,151 Z" fill="#e8e8ec"/>
+<path d="M63,157 L85,157 L85,160 Q85,160.5 83,160.5 L65,160.5 Q62,160.5 63,157Z" fill="#c23b3b"/>
+<path d="M35,88 Q19,96 20,112 Q20,120 26,123" fill="none" stroke="url(#avSkinG)" stroke-width="16" stroke-linecap="round"/>
+<path d="M35,88 Q19,96 20,112" fill="none" stroke="#000" stroke-opacity=".08" stroke-width="16" stroke-linecap="round"/>
+<path d="M45,83 Q60,78 75,83 Q88,86 92,98 Q94,106 84,110 L83,130 Q60,136 37,130 L36,110 Q26,106 28,98 Q32,86 45,83Z" fill="${bc}"/>
+<path d="M45,83 Q37,90 33,98 L28,98 Q32,86 45,83Z" fill="#000" opacity=".1"/>
+<path d="M52,84 Q60,87 68,84 L70,92 Q60,96 50,92 Z" fill="#000" opacity=".14"/>
 ${fOutfitSvg}
-<circle cx="22" cy="119" r="9" fill="#fed7aa"/>
-<circle cx="98" cy="119" r="9" fill="#fed7aa"/>
-<rect x="50" y="74" width="20" height="12" fill="#fed7aa"/>
-<circle cx="60" cy="52" r="27" fill="#fed7aa"/>
-<circle cx="32" cy="52" r="8" fill="#fed7aa"/>
-<circle cx="88" cy="52" r="8" fill="#fed7aa"/>
-<circle cx="51" cy="48" r="5" fill="#1a202c"/>
-<circle cx="69" cy="48" r="5" fill="#1a202c"/>
-<circle cx="52.5" cy="46.5" r="2" fill="white"/>
-<circle cx="70.5" cy="46.5" r="2" fill="white"/>
-<path d="M50,61 Q60,68 70,61" stroke="#1a202c" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-<ellipse cx="60" cy="56" rx="3" ry="2" fill="#f6ad55" opacity=".45"/>
-<circle cx="43" cy="59" r="5.5" fill="#fc8181" opacity=".28"/>
-<circle cx="77" cy="59" r="5.5" fill="#fc8181" opacity=".28"/>
-${accSvg}${hatSvg}
+<path d="M20,117 Q16,116 15,120 Q14,124 17,125 Q16,127 18,129 Q20,130 21,128 Q22,130 24,129 Q26,128 25,126 Q28,127 29,124 Q30,121 27,119 Q24,117 20,117Z" fill="url(#avSkinG)"/>
+<path d="M100,111 Q104,110 105,114 Q106,118 103,119 Q104,121 102,123 Q100,124 99,122 Q98,124 96,123 Q94,122 95,120 Q92,121 91,118 Q90,115 93,113 Q96,111 100,111Z" fill="url(#avSkinG)"/>
+<path d="M50,74 Q60,80 70,74 L70,86 Q60,90 50,86 Z" fill="#e8ab7d"/>
+<ellipse cx="60" cy="51" rx="26" ry="28" fill="url(#avSkinG)"/>
+<ellipse cx="35" cy="55" rx="6" ry="9" fill="#eeb083"/>
+<ellipse cx="85" cy="55" rx="6" ry="9" fill="#eeb083"/>
+<ellipse cx="43" cy="63" rx="7" ry="4.5" fill="#e8896b" opacity=".3"/>
+<ellipse cx="77" cy="63" rx="7" ry="4.5" fill="#e8896b" opacity=".3"/>
+<path d="M38,68 Q60,86 82,68 Q74,80 60,82 Q46,80 38,68Z" fill="#d98f5f" opacity=".25"/>
+<path d="M34,46 Q30,16 60,13 Q90,16 86,46 Q84,26 76,20 Q70,28 60,22 Q50,28 44,20 Q36,26 34,46Z" fill="#5b3a24"/>
+<path d="M46,15 Q42,24 44,32" fill="none" stroke="#4a2e1a" stroke-width="1.2" opacity=".5"/>
+<path d="M46,44 Q52,40 58,43" fill="none" stroke="#4a2e1a" stroke-width="2" stroke-linecap="round"/>
+<path d="M62,43 Q68,40 74,44" fill="none" stroke="#4a2e1a" stroke-width="2" stroke-linecap="round"/>
+<ellipse cx="51" cy="49" rx="5" ry="6" fill="#fff"/>
+<ellipse cx="69" cy="49" rx="5" ry="6" fill="#fff"/>
+<circle cx="52" cy="50" r="3" fill="#3a2416"/>
+<circle cx="70" cy="50" r="3" fill="#3a2416"/>
+<circle cx="53" cy="48.5" r="1" fill="#fff"/>
+<circle cx="71" cy="48.5" r="1" fill="#fff"/>
+<path d="M58,53 Q56,58 60,60 Q63,59 62,56" fill="none" stroke="#d98f5f" stroke-width="1.3" stroke-linecap="round"/>
+<path d="M52,64 Q60,69 68,64" fill="none" stroke="#a8503a" stroke-width="2.2" stroke-linecap="round"/>
+<circle cx="43" cy="59" r="4" fill="#fc8181" opacity=".22"/>
+<circle cx="77" cy="59" r="4" fill="#fc8181" opacity=".22"/>
+${petSvg}${accSvg}${hatSvg}
 </svg>`;
 }
 
