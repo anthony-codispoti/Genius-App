@@ -175,6 +175,9 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 <body>
 <div id="app"></div>
 <div id="pinOverlay" style="display:none;"></div>
+<div id="updateBanner" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9998;padding:10px 16px;background:#3d7dfa;color:#fff;font-weight:600;text-align:center;font-size:.88rem;">
+  A new version of this app is available. <button id="updateReloadBtn" style="margin-left:10px;padding:4px 12px;border-radius:6px;border:none;background:#fff;color:#3d7dfa;font-weight:700;cursor:pointer;">Refresh now</button>
+</div>
 <script>
 'use strict';
 
@@ -370,6 +373,11 @@ const FACT_DOMAINS=[
 ];
 const SB_URL='https://dtcsjhxfnjxnfeyfeeaj.supabase.co';
 const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
+// Bump this string on every deploy that changes app.js-equivalent logic (this
+// file). Lets an already-open tab detect it's running stale code — including
+// bfcache-restored tabs, which "refresh" without re-running any script — and
+// prompt a real reload instead of silently misbehaving with old logic.
+const APP_VERSION='v2026-08-14a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -1647,6 +1655,30 @@ function handleUseTheme(themeId){
 function extractOption(text,letter){const re=new RegExp(`Option\\s+${letter}[:\\s]+(.+?)(?=Option\\s+[AB]|$)`,'is');const m=text.match(re);return m?m[1].trim().replace(/\n/g,' ').slice(0,220):null;}
 function eh(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function ea(s){if(!s)return'';return String(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,' ');}
+
+// ─── Stale-tab detection ────────────────────────────────────────────────────
+// A tab that's been sitting open (or restored from bfcache — which "refreshes"
+// the page without re-running any script at all) can silently keep running
+// old logic. Fetch this same URL fresh and see if the currently-running
+// APP_VERSION is still present in it; if not, a newer build has shipped and
+// this tab needs a real reload, not just a re-render.
+async function checkForUpdate(){
+  try{
+    const res=await fetch(location.pathname,{cache:'no-store'});
+    const html=await res.text();
+    if(!html.includes(APP_VERSION)){
+      document.getElementById('updateBanner').style.display='block';
+    }
+  }catch{} // offline or blocked — not worth surfacing, next check will retry
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const btn=document.getElementById('updateReloadBtn');
+  if(btn)btn.addEventListener('click',()=>location.reload());
+});
+// pageshow (not just DOMContentLoaded/load) so this also fires when a page is
+// restored from bfcache, i.e. exactly the "I refreshed and it was still
+// stale" case — event.persisted is true only for that restore path.
+window.addEventListener('pageshow',()=>{checkForUpdate();});
 
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 (async function boot(){
