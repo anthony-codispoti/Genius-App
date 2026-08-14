@@ -453,7 +453,8 @@ async function pushToSupabase(childId,state){
 async function pullFromSupabase(p){
   try{
     const localRaw=localStorage.getItem(p.storageKey);
-    const localTime=localRaw?JSON.parse(localRaw)._savedAt||0:0;
+    const local=localRaw?JSON.parse(localRaw):null;
+    const localTime=local?local._savedAt||0:0;
     const r=await fetch(`${SB_URL}/rest/v1/child_state?child_id=eq.${p.id}&select=state`,{
       headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
     });
@@ -463,8 +464,25 @@ async function pullFromSupabase(p){
     const remote=data[0].state;
     const remoteTime=remote._savedAt||0;
     if(remoteTime<=localTime){
-      // Local is at least as fresh — re-push local to Supabase to keep it in sync
-      if(localRaw&&localTime>0)pushToSupabase(p.id,JSON.parse(localRaw)).catch(()=>{});
+      // Local's WHOLE-STATE timestamp is newer, but that only proves this
+      // device's GAMEPLAY progress is newer — not its SETTINGS. A parent's
+      // settings change made on another device can carry an older timestamp
+      // than this device's own next session-save, which had no way to know
+      // about it. Blindly re-pushing local as "the" state (as this used to
+      // do) would silently re-bury that settings change on every normal app
+      // open. So: layer remote's settings fields onto local first, and only
+      // fall back to a plain re-push if nothing actually differs.
+      if(local){
+        const merged={...local};
+        let changed=false;
+        SETTINGS_FIELDS.forEach(k=>{if(remote[k]!==undefined&&JSON.stringify(remote[k])!==JSON.stringify(local[k])){merged[k]=remote[k];changed=true;}});
+        if(changed){
+          merged._savedAt=Date.now();
+          pushToSupabase(p.id,merged).catch(()=>{});
+          return Object.assign(defaultState(p),merged);
+        }
+        pushToSupabase(p.id,local).catch(()=>{});
+      }
       return null;
     }
     return Object.assign(defaultState(p),remote);
@@ -1208,7 +1226,20 @@ function val(id){const el=document.getElementById(id);return el?el.value:'';}
 function goTo(screen){setState({screen,error:null,expandedQDot:null});}
 
 // ─── Handlers ─────────────────────────────────────────────────────────────────
-function handleSetupContinue(){const k=val('apiKeyInput').trim();if(!k){setState({error:'Please enter your Anthropic API key.'});return;}saveApiKey(k);const p=loadActiveChild(),st=loadState(p);if(st.activeTheme)applyTheme(st.activeTheme);setState({screen:'home',activeProfile:p,persistedState:st,error:null});}
+async function handleSetupContinue(){
+  const k=val('apiKeyInput').trim();if(!k){setState({error:'Please enter your Anthropic API key.'});return;}
+  saveApiKey(k);
+  const p=loadActiveChild(),st=loadState(p);
+  if(st.activeTheme)applyTheme(st.activeTheme);
+  setState({screen:'home',activeProfile:p,persistedState:st,error:null});
+  // loadState() above is local-storage-only, so a device that never uses the
+  // profile-switcher tabs (e.g. a kid's own dedicated device, always on their
+  // own profile) would otherwise NEVER see a settings change made from another
+  // device — only switchChild() checked Supabase before. Every normal app open
+  // needs the same check, not just an explicit profile switch.
+  const remote=await pullFromSupabase(p);
+  applyRemoteIfStillNewer(p,remote);
+}
 
 async function switchChild(id){
   const p=PROFILES[id];if(!p)return;
