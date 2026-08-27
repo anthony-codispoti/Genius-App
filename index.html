@@ -1169,15 +1169,16 @@ function renderSettings(){
   <label class="bold text-sm">Facts woven into story</label><p class="text-muted text-sm mb8">How many real facts get built into the plot (revealed after in "What Was Real"). Light keeps it subtle; rich packs in more.</p>
   <div class="pr-field"><label style="min-width:0;margin:0;">Fact count</label><input type="number" id="factIntensityInput" min="2" step="1" value="${st.factIntensity||3}"><span class="text-muted text-sm"> (no upper limit — but a short story can only naturally fit so many before it stops reading like a story)</span></div>
   <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
-  <label class="bold text-sm">Parent topic override</label><p class="text-muted text-sm mb8">Type anything specific — a chapter topic, a historical event, a science concept. Stays active until you clear it.</p>
-  <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;"><input type="text" id="factFreeformInput" placeholder="e.g., Battle of Bunker Hill" value="${eh(st.factDomainFreeform||'')}"><button class="btn btn-primary" id="saveFactFreeformBtn" style="white-space:nowrap;">Set</button>${st.factDomainFreeform?`<button class="btn btn-secondary" id="clearFactFreeformBtn" style="white-space:nowrap;">Clear</button>`:''}</div>
-  ${st.factDomainFreeform?`<div class="text-xs mt6" style="color:var(--warning);">Active override: "${eh(st.factDomainFreeform)}"</div>`:''}
-  <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
   <label class="bold text-sm">Active topic categories</label><p class="text-muted text-sm mb8">Uncheck any topic to remove it from rotation.</p>
   ${FACT_DOMAINS.map(d=>{const active=!st.factDomainsActive||st.factDomainsActive.includes(d.id);return`<label style="display:flex;align-items:center;gap:8px;padding:5px 0;cursor:pointer;"><input type="checkbox" class="fact-domain-chk" value="${d.id}" ${active?'checked':''}><span>${d.icon} ${eh(d.name)}</span></label>`;}).join('')}
   <hr style="margin:16px 0;border:none;border-top:1px solid var(--border);">
   <label style="display:flex;align-items:center;gap:10px;cursor:pointer;padding:4px 0;"><input type="checkbox" id="factRepeatLimitChk" ${st.factDomainRepeatLimit?'checked':''}><span class="text-sm">Limit repeats — prevent the same topic 3 sessions in a row</span></label>
-  <div class="mt12"><button class="btn btn-primary" id="saveFactDomainsBtn">Save</button></div></div>
+  <div class="mt12"><button class="btn btn-primary" id="saveFactDomainsBtn">Save Fact Count &amp; Categories</button></div>
+  <hr style="margin:20px 0;border:none;border-top:1px solid var(--border);">
+  <label class="bold text-sm">Parent topic override</label><p class="text-muted text-sm mb8">Type anything specific — a chapter topic, a historical event, a science concept. Stays active until you clear it. This is its own separate action from the Save button above — it takes effect immediately.</p>
+  <div style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap;"><input type="text" id="factFreeformInput" placeholder="e.g., Battle of Bunker Hill" value="${eh(st.factDomainFreeform||'')}"><button class="btn btn-primary" id="saveFactFreeformBtn" style="white-space:nowrap;">Set</button>${st.factDomainFreeform?`<button class="btn btn-secondary" id="clearFactFreeformBtn" style="white-space:nowrap;">Clear</button>`:''}</div>
+  ${st.factDomainFreeform?`<div class="text-xs mt6" style="color:var(--warning);">Active override: "${eh(st.factDomainFreeform)}"</div>`:''}
+  </div>
   <div class="card"><h3 class="mb4">Story Length</h3><p class="text-muted text-sm mb12">Shorter = faster session; longer = more to read.</p><label>Target word count: <strong id="wlDisplay">${wl}</strong> words</label><input type="range" id="wordLengthSlider" min="400" max="1200" step="50" value="${wl}" oninput="document.getElementById('wlDisplay').textContent=this.value"><div style="display:flex;justify-content:space-between;font-size:.75rem;color:var(--text2);margin-top:4px;"><span>400 (short)</span><span>1200 (long)</span></div><div class="mt12"><button class="btn btn-primary" id="saveWordLengthBtn">Save</button></div></div>`;
 }
 
