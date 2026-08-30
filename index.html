@@ -659,20 +659,25 @@ function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,life
   const heroNote=heroName?`\nUse "${heroName}" as the main character or sidekick name.`:'';
   const contNote=storySummary?`\nCONTINUITY (only if topic asks to continue): ${storySummary}`:'';
   const fc=factCount||3;
-  const interestNote=(profile.interests&&profile.interests.length)?`\n- If — and only if — it fits this specific domain and topic naturally, you may frame one fact or scene through something ${profile.name} loves (${profile.interests.join(', ')}). Never force it, and never let it override or replace the topic itself — skip it entirely rather than make it feel bolted on.`:'';
+  const interestNote=(profile.interests&&profile.interests.length)?`\n- If — and only if — it fits this specific domain and the requested topic/setting naturally, you may frame one fact or scene through something ${profile.name} loves (${profile.interests.join(', ')}). Never force it, and never let it override or replace the topic/setting itself — skip it entirely rather than make it feel bolted on.`:'';
   const factNote=factDomain?`
 FACTUAL LEARNING DOMAIN: ${factDomain}
-- Choose ONE narrow, specific angle within this domain (e.g., not "ancient Rome" but "how Roman aqueducts brought water to cities")
+- This domain is SUBORDINATE to the topic/setting above — the requested topic/setting always wins. Find or bend an angle within this domain that fits naturally into that setting. If nothing in the domain fits at all, still keep the requested setting and weave the facts in as lightly as needed rather than replacing or ignoring the setting.
+- Choose ONE narrow, specific angle within this domain (e.g., not "ancient Rome" but "how Roman aqueducts brought water to cities") — but only after it's been fit to the setting above
 - Weave ${fc} real, accurate facts into the plot — the character USES or DISCOVERS them to solve problems, never lectures about them
 - Facts must be well-established and unambiguous — no contested science or history
 - Measurements: use imperial first (feet, miles, pounds, °F) with metric in parentheses on first use — e.g., "15 miles (24 km)"
 - The factual content should feel like a natural part of the adventure, not a school lesson${interestNote}`:'';
   return `You are writing a story for ${profile.name}, age ${profile.age}, entering ${profile.grade} grade.
 
+REQUESTED TOPIC/SETTING — HIGHEST PRIORITY, MUST BE HONORED EXACTLY:
+${topic}${contNote}
+Everything below (facts, math, life lesson) must be built to fit inside this setting/request. Never drop, water down, or substitute this request to make room for anything else in this prompt.
+
 STYLE: ${profile.sentenceComplexity}${heroNote}
 ${factNote}
 MATH SITUATION — CRITICAL:
-- Embed exactly ONE math situation matched to level ${mathLevel.toFixed(1)} in "${mathDomain}"
+- Embed exactly ONE math situation matched to level ${mathLevel.toFixed(1)} in "${mathDomain}", set within the requested topic/setting above
 - Give the reader all numbers needed to solve it
 - DO NOT solve it, show the steps, or reveal the answer anywhere in the story
 - A character may notice or face the problem — they must NOT work through it or say the answer
@@ -680,8 +685,6 @@ MATH SITUATION — CRITICAL:
 LIFE LESSON: "${lifeLesson}" — shown through character ACTIONS only, never stated
 
 ${formatInst}
-
-TOPIC: ${topic}${contNote}
 
 Start the story immediately — no title headers, no preamble.`;
 }

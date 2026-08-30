@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "gio-app",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "3456"],
+      "port": 3456
+    },
+    {
+      "name": "gio-conquest",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "3457", "--directory", "/Users/anthony/iCloud Drive (Archive)/Documents/Claude Code/Gio Conquest Map"],
+      "port": 3457
+    },
+    {
+      "name": "madlibs-static",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "3458", "--directory", "/Users/anthony/iCloud Drive (Archive)/Documents/Claude Code/Mad Libs App"],
+      "port": 3458
+    }
+  ]
+}
