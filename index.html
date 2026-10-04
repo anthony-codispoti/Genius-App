@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-08-30a';
+const APP_VERSION='v2026-10-04a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -417,6 +417,24 @@ async function freshestState(p){
 // change made on another device (or an earlier, unreloaded tab) in the
 // meantime, without touching the session's own progress/points arithmetic.
 const SETTINGS_FIELDS=['numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
+
+// ─── In-progress session draft ──────────────────────────────────────────────
+// A story (and especially the questions step right after it) can fail on a
+// flaky network call with no way to recover in-place except re-reading the
+// whole story. Mirror the in-memory session into localStorage whenever we're
+// on a screen worth resuming, so a refresh (or a crash that forces one) can
+// put the reader right back where they were instead of discarding everything.
+const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
+const DRAFT_FIELDS=['screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic'];
+function draftKey(p){return p.storageKey+'_draft';}
+function saveDraft(){
+  if(!S.activeProfile)return;
+  const snap={};
+  for(const f of DRAFT_FIELDS)snap[f]=S[f];
+  try{localStorage.setItem(draftKey(S.activeProfile),JSON.stringify(snap));}catch(e){console.error('Draft save failed',e);}
+}
+function clearDraft(p){try{localStorage.removeItem(draftKey(p||S.activeProfile));}catch{}}
+function loadDraft(p){try{const raw=localStorage.getItem(draftKey(p));return raw?JSON.parse(raw):null;}catch{return null;}}
 // Save a pure settings change: baseline against the freshest known state
 // (not just whatever's in memory) before merging in the caller's edit.
 async function saveSettingsSynced(p,mutateFn){
@@ -819,7 +837,14 @@ let S={
   factBullets:[],factTopic:null,
   pendingTopic:null,pendingIsContinuation:false,
 };
-function setState(patch){Object.assign(S,patch);render();}
+function setState(patch){
+  Object.assign(S,patch);
+  render();
+  if(S.activeProfile){
+    if(RESUMABLE_SCREENS.has(S.screen))saveDraft();
+    else if(S.screen==='home'||S.screen==='wrapup')clearDraft();
+  }
+}
 
 // ─── Render ────────────────────────────────────────────────────────────────────
 const SCREENS={setup:renderSetup,home:renderHome,loading:renderLoading,'story-cyp':renderStoryCYP,'story-detective':renderStoryDetective,decision:renderDecision,'continuation-loading':renderContinuationLoading,continuation:renderContinuation,questions:renderQuestions,wrapup:renderWrapup,'fact-reveal':renderFactReveal,'parent-review':renderParentReview,rewards:renderRewards,history:renderHistory,settings:renderSettings,'fact-pick':renderFactPick};
@@ -1692,6 +1717,11 @@ window.addEventListener('pageshow',()=>{checkForUpdate();});
     // Load from localStorage immediately so screen appears fast
     let st=loadState(p);
     S.activeProfile=p;S.persistedState=st;S.screen='home';
+    const draft=loadDraft(p);
+    if(draft&&RESUMABLE_SCREENS.has(draft.screen)){
+      Object.assign(S,draft);
+      S.error=null;
+    }
     if(st.activeTheme)applyTheme(st.activeTheme);
     render();
     // Then pull from Supabase and update if data exists there
