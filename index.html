@@ -183,8 +183,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Geometry','The Number System (operations with positive/negative fractions and decimals)','Statistics and Probability','Geometry','Expressions and Equations','Ratios and Proportional Relationships'],numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,readingFocus:['text_complexity','informational','inference','theme']},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Geometry','The Number System (operations with positive/negative fractions and decimals)','Statistics and Probability','Geometry','Expressions and Equations','Ratios and Proportional Relationships'],numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,readingFloor:3.0,readingCap:5.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-21a';
+const APP_VERSION='v2026-10-22a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -416,7 +416,7 @@ async function freshestState(p){
 // blob back — so finishing a session never silently reverts a settings
 // change made on another device (or an earlier, unreloaded tab) in the
 // meantime, without touching the session's own progress/points arithmetic.
-const SETTINGS_FIELDS=['numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
+const SETTINGS_FIELDS=['readingCap','numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
 
 // ─── In-progress session draft ──────────────────────────────────────────────
 // A story (and especially the questions step right after it) can fail on a
@@ -553,7 +553,7 @@ function calibrate(p,st){
   if(!st||st.calibration===CALIBRATION_TAG||p.calibratedReadingLevel==null)return st;
   // In memory only — it persists with the next completed session. Saving here
   // could push a stale device's copy over newer progress in the cloud.
-  return{...st,readingLevel:p.calibratedReadingLevel,readingConsec5:0,readingConseqLow:0,calibration:CALIBRATION_TAG};
+  return{...st,readingLevel:p.calibratedReadingLevel,readingCap:st.readingCap??p.readingCap,readingConsec5:0,readingConseqLow:0,calibration:CALIBRATION_TAG};
 }
 const READING_SKILLS={
   inference:'Inference (figure out what the text implies, using evidence)',
@@ -567,6 +567,7 @@ const READING_SKILLS={
   informational:'Informational text (the in-story document)',
   text_complexity:'Hardest passage (the most complex sentences/ideas in the text)',
   key_details:'Key details that support a bigger idea',
+  evidence:'Citing text evidence (Part B: which sentence proves it)',
 };
 
 // ─── Format & Level helpers ────────────────────────────────────────────────────
@@ -576,33 +577,60 @@ function getISOWeek(d){const u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.
 // Reading and math move independently. Reading counts only FIRST-TRY answers on
 // reading questions; math counts the math questions. (Previously one combined
 // score moved both, and multiple choice allowed unlimited retries.)
-function sessionBreakdown(questions,answers){
-  let rC=0,rT=0,mC=0,mT=0;
+function sessionBreakdown(questions,answers,profile){
+  const focus=(profile&&profile.readingFocus)||[];
+  let rC=0,rT=0,mC=0,mT=0,fC=0,fT=0;
   (questions||[]).forEach((q,i)=>{const a=(answers||[])[i]||{};
-    if(q.type==='math'){mT++;if(a.correct)mC++;}else{rT++;if(a.correct)rC++;}});
-  return{rC,rT,mC,mT};
+    if(q.type==='math'){mT++;if(a.correct)mC++;return;}
+    rT++;if(a.correct)rC++;
+    if(focus.includes(q.skill)||q.difficulty==='stretch'){fT++;if(a.correct)fC++;}});
+  return{rC,rT,mC,mT,fC,fT};
 }
-function computeLevelChanges(state,bd,pname){
-  const c={readingLevel:state.readingLevel,mathLevel:state.mathLevel,readingConsec5:state.readingConsec5||0,readingConseqLow:state.readingConseqLow||0,mathConsec5:state.mathConsec5||0,mathConseqLow:state.mathConseqLow||0};
-  const ann=[],meta={readingLevelUp:false,mathLevelUp:false,readingLevelDown:false,mathLevelDown:false};
-  const r=x=>Math.round(x*10)/10;
+// Level rules (Oct 2026):
+// - Judged on the last 5 sessions under the new scoring (first pick only).
+// - Reading: >=90% first-try -> up to 2 level-ups/week; 85-89% -> 1/week.
+//   Also needs >=70% on focus/stretch questions, and 3+ sessions since the last move.
+//   Two sessions in a row under 60% -> down 0.2 right away.
+//   Never above readingCap (Star book range + 0.5) or below the floor; hitting the cap is flagged for the parent.
+// - Math moves separately: >=85% over 5 sessions -> 1/week; two sessions with zero math right -> down 0.1.
+const LEVEL_WINDOW=5;
+function computeLevelChanges(state,bd,pname,profile){
+  profile=profile||{};
+  const c={readingLevel:state.readingLevel,mathLevel:state.mathLevel,readingConsec5:state.readingConsec5||0,readingConseqLow:state.readingConseqLow||0,mathConsec5:state.mathConsec5||0,mathConseqLow:state.mathConseqLow||0,readingUpDates:[...(state.readingUpDates||[])],mathUpDates:[...(state.mathUpDates||[])],readingCapHitAt:state.readingCapHitAt||null};
+  const ann=[],meta={readingLevelUp:false,mathLevelUp:false,readingLevelDown:false,mathLevelDown:false,readingAtCap:false};
+  const r=x=>Math.round(x*10)/10, now=Date.now(), WEEK=7*86400000;
+  const recent=[...(state.sessionHistory||[]).filter(h=>h.v===2),{...bd}].slice(-LEVEL_WINDOW);
+  const sum=k=>recent.reduce((t,h)=>t+(h[k]||0),0);
+  const cap=state.readingCap??profile.readingCap??12, floor=profile.readingFloor??1;
   if(bd.rT>0){
     const pct=bd.rC/bd.rT;
-    let up=c.readingConsec5,low=c.readingConseqLow;
-    if(pct>=0.99){up++;low=0;}else if(pct<=0.5){low++;up=0;}else{up=0;low=0;}
-    if(up>=2){c.readingLevel=r(c.readingLevel+0.1);up=0;meta.readingLevelUp=true;ann.push(`${pname} moved up to ${c.readingLevel.toFixed(1)} in reading — earned it.`);}
-    if(low>=2){c.readingLevel=r(Math.max(1,c.readingLevel-0.2));low=0;meta.readingLevelDown=true;ann.push(`Reading eased back to ${c.readingLevel.toFixed(1)} — two tough sessions in a row.`);}
-    c.readingConsec5=up;c.readingConseqLow=low;
+    c.readingConsec5++; // sessions since last reading level change
+    c.readingConseqLow=pct<0.6?c.readingConseqLow+1:0;
+    const acc=sum('rT')?sum('rC')/sum('rT'):0, facc=sum('fT')?sum('fC')/sum('fT'):1;
+    const upsThisWeek=c.readingUpDates.filter(t=>now-t<WEEK).length;
+    const limit=acc>=0.9?2:acc>=0.85?1:0;
+    if(c.readingConseqLow>=2&&c.readingLevel>floor){
+      c.readingLevel=r(Math.max(floor,c.readingLevel-0.2));c.readingConseqLow=0;c.readingConsec5=0;meta.readingLevelDown=true;
+      ann.push(`Reading eased back to ${c.readingLevel.toFixed(1)} — we'll build back up.`);
+    }else if(recent.length>=LEVEL_WINDOW&&c.readingConsec5>=3&&upsThisWeek<limit&&facc>=0.7){
+      if(c.readingLevel+0.1<=cap+1e-9){
+        c.readingLevel=r(c.readingLevel+0.1);c.readingConsec5=0;c.readingUpDates=[...c.readingUpDates.filter(t=>now-t<WEEK*4),now];meta.readingLevelUp=true;
+        ann.push(`${pname} moved up to ${c.readingLevel.toFixed(1)} in reading — earned it.`);
+      }else{meta.readingAtCap=true;if(!c.readingCapHitAt)c.readingCapHitAt=now;}
+    }
   }
   if(bd.mT>0){
-    let up=c.mathConsec5,low=c.mathConseqLow;
-    if(bd.mC===bd.mT){up++;low=0;}else if(bd.mC===0){low++;up=0;}else{up=0;low=0;}
-    if(up>=2){c.mathLevel=r(c.mathLevel+0.1);up=0;meta.mathLevelUp=true;ann.push(`Math is moving up to ${c.mathLevel.toFixed(1)}. Keep it going.`);}
-    if(low>=2){c.mathLevel=r(Math.max(1,c.mathLevel-0.1));low=0;meta.mathLevelDown=true;ann.push(`Math eased back to ${c.mathLevel.toFixed(1)}.`);}
-    c.mathConsec5=up;c.mathConseqLow=low;
+    c.mathConsec5++;
+    c.mathConseqLow=bd.mC===0?c.mathConseqLow+1:0;
+    const macc=sum('mT')?sum('mC')/sum('mT'):0;
+    const mups=c.mathUpDates.filter(t=>now-t<WEEK).length;
+    if(c.mathConseqLow>=2){c.mathLevel=r(Math.max(1,c.mathLevel-0.1));c.mathConseqLow=0;c.mathConsec5=0;meta.mathLevelDown=true;ann.push(`Math eased back to ${c.mathLevel.toFixed(1)}.`);}
+    else if(recent.length>=LEVEL_WINDOW&&c.mathConsec5>=3&&macc>=0.85&&mups<1){c.mathLevel=r(c.mathLevel+0.1);c.mathConsec5=0;c.mathUpDates=[...c.mathUpDates.filter(t=>now-t<WEEK*4),now];meta.mathLevelUp=true;ann.push(`Math is moving up to ${c.mathLevel.toFixed(1)}. Keep it going.`);}
   }
   return{changes:c,announcements:ann,meta};
 }
+// Points: first-try correct earns the usual points; stretch (⭐) questions add a bonus.
+function questionPoints(q,correct,hintsUsed){return correct?pointsForAnswer(true,hintsUsed)+(q&&q.difficulty==='stretch'?5:0):0;}
 
 // ─── Gamification ─────────────────────────────────────────────────────────────
 // Points: correct no hints=10, hint1=7, hint2=4, hint3=1, wrong=0
@@ -799,7 +827,11 @@ function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,
   const nm=numMathQ||1;
   const nf=numFactQ||0;
   const fc=factCount||3;
-  const nGeneral=Math.max(n-nm-nf-1,0); // 1 slot reserved for the mandatory "lesson" question
+  const lessonTwoPart=(n-nm-nf)>=2;
+  const nGeneral=Math.max(n-nm-nf-(lessonTwoPart?2:1),0); // items left after math, fact and the lesson question
+  const genTwoPart=nGeneral>=2?1:0;
+  const genSingles=nGeneral-2*genTwoPart;
+  const nStretch=Math.max(1,Math.round((n-nm)*0.4));
   return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)} (about ${lexileFor(readingLevel)}L).
 
 Story:
@@ -826,6 +858,16 @@ RULES:
 ✗ No pure "what color was the hat" recall questions
 ✓ Every question must have ONE best answer that a careful reader can defend with evidence from the text
 ✓ Include "skill":"<one key from the list>" on every question (math questions use "skill":"math")
+
+DIFFICULTY MIX (keeps it challenging without being discouraging):
+✓ Mark every non-math question "difficulty":"core" or "difficulty":"stretch"
+✓ About ${nStretch} stretch questions — these use the FOCUS SKILLS and need real inference; core questions are solid but more approachable
+✓ ORDER the questions: easiest core question first, stretch questions in the middle/late, math last
+
+TWO-PART QUESTIONS (evidence — like Ohio's state test):
+✓ ${lessonTwoPart?'The "lesson" question':'No lesson two-part'}${genTwoPart?` and ${genTwoPart} "general" question`:''} must be TWO-PART: add a "part_b" object
+✓ Part B asks "Which sentence from the story best supports the answer to Part A?" — 4 choices that are quoted sentences from the text; only one truly proves it; the others are real sentences from the story that are related but don't prove it
+✓ Each two-part question counts as 2 of the ${n} items
 
 MATH QUESTIONS (exactly ${nm}, type "math"):
    - Ask ${profile.name} to calculate the answer himself
@@ -865,17 +907,17 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_topic": "The specific subtopic you chose (e.g., 'Roman aqueducts' or 'how volcanoes form')",
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
-    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
+    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."} /* part_b ONLY on two-part questions */,"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
     math:      {"q":"...","type":"math","skill":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
   ]
 }
 
 - fact_topic: the specific angle you picked (one phrase, e.g. "Roman aqueducts")
 - fact_bullets: exactly ${fc} real facts from the domain — short, punchy, surprising. NOT summaries of the story. Real-world truths that appeared in the story.
-- questions array: exactly ${n} questions total
+- questions array: ${n} items total (a two-part question = 2 items), i.e. ${n-(lessonTwoPart?1:0)-genTwoPart} question objects
   - Exactly ${nm} type "math"
-  ${nf>0?`- Exactly ${nf} type "fact"\n  `:''}- Exactly 1 type "lesson" (skill "theme": what the story teaches, shown through what characters did)
-  - Remaining ${nGeneral} type "general"
+  ${nf>0?`- Exactly ${nf} type "fact"\n  `:''}- Exactly 1 type "lesson" (skill "theme": what the story teaches, shown through what characters did)${lessonTwoPart?' — two-part':''}
+  - ${genTwoPart+genSingles} type "general"${genTwoPart?` (${genTwoPart} of them two-part)`:''}
 - Return ONLY the JSON object, nothing else`;
 }
 
@@ -945,7 +987,9 @@ function renderHome(){
     :sync==='ok'?`<div class="level-announce mb8" style="background:#14532d22;color:#4ade80;">✓ Session saved &amp; synced</div>`
     :sync==='failed'?`<div class="level-announce mb8" style="background:#7f1d1d33;color:#f87171;">⚠️ Saved locally — cloud sync failed. Check your connection.</div>`:'';
   if(sync==='ok')setTimeout(()=>{S.syncStatus=null;render();},3000);
-  return banners+badgeBanners+syncBanner+`
+  const v2n=(st.sessionHistory||[]).filter(h=>h.v===2).length;
+  const rulesBanner=st.calibration&&v2n<4?`<div class="level-announce mb8" style="color:var(--text);">🆕 New rules: only your <b>first pick</b> counts now, so read closely before you tap. ⭐ Challenge questions are worth +5 bonus points. Some questions come in two parts: the answer, then the sentence that proves it.</div>`:'';
+  return banners+badgeBanners+syncBanner+rulesBanner+`
   <div class="top-nav">${renderSwitcher()}<div class="top-nav-right"><span class="points-pill" id="rewardsNavBtn">⭐ ${st.points||0} pts</span></div></div>
   <div class="session-hdr">
     <div style="display:flex;align-items:center;gap:16px;">${renderAvatar(st.avatarEquipped,116,p.gender)}<div><h1>Hey ${eh(p.name)}! 👋</h1><p class="text-muted">${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p></div></div>
@@ -967,8 +1011,8 @@ function renderHome(){
   </div>
   <div class="card card-sm mb12">
     <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:.85rem;color:var(--text2);">
-      <span>📚 Reading streak: <strong style="color:var(--text)">${st.readingConsec5||0}/2</strong></span>
-      <span>🧮 Math streak: <strong style="color:var(--text)">${st.mathConsec5||0}/2</strong></span>
+      <span>📚 Reading first try (last ${LEVEL_WINDOW}): <strong style="color:var(--text)">${(()=>{const r=(st.sessionHistory||[]).filter(h=>h.v===2).slice(-LEVEL_WINDOW);const t=r.reduce((a,h)=>a+h.rT,0);return t?Math.round(100*r.reduce((a,h)=>a+h.rC,0)/t)+'%':'—';})()}</strong></span>
+      
       <span>🔥 Day streak: <strong style="color:var(--text)">${st.consecutiveStreak||0}</strong></span>
       ${sessToday>0?`<span>✅ Today: <strong style="color:var(--text)">${sessToday}</strong></span>`:''}
     </div>
@@ -1042,6 +1086,8 @@ function renderQuestions(){
     <!-- Question — right column -->
     <div>
       <div class="card">
+        ${q.partLabel||q.difficulty==='stretch'?`<div class="mb8" style="display:flex;gap:6px;">${q.partLabel?`<span class="tag tag-accent">${eh(q.partLabel)}</span>`:''}${q.difficulty==='stretch'?'<span class="tag" style="border-color:var(--warning);color:var(--warning);">⭐ Challenge +5</span>':''}</div>`:''}
+        ${q.partAAnswer?`<div class="text-xs text-muted mb8">Part A answer: ${eh(q.partAAnswer)}</div>`:''}
         <div style="font-size:1rem;font-weight:600;margin-bottom:14px;line-height:1.4;">${eh(q.q)}</div>
 
         ${wrongHTML}
@@ -1113,9 +1159,9 @@ function renderParentReview(){
   const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
   const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
   const numQ=S.numQ||p.numQuestions;
-  const bd=sessionBreakdown(S.questions,S.answers);
-  const{announcements}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},bd,p.name);
-  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math: ${bd.mC}/${bd.mT}. Levels move on these, not the session score.</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
+  const bd=sessionBreakdown(S.questions,S.answers,p);
+  const{announcements,meta:pm}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},bd,p.name,p);
+  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math: ${bd.mC}/${bd.mT}. Levels move on first-try accuracy over the last ${LEVEL_WINDOW} sessions, not this score.${pm.readingAtCap?' <b>Reading is at its cap ('+(st.readingCap??p.readingCap)+') — ready for more.</b>':''}</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
 }
 
 // ─── Rewards ──────────────────────────────────────────────────────────────────
@@ -1451,9 +1497,23 @@ async function handleReadyForQuestions(){
     catch{throw new Error('Could not parse questions. Please retry.');}
     if(Array.isArray(parsed)){qs=parsed;}
     else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
-    if(!Array.isArray(qs)||qs.length<numQ)throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
-    setState({screen:'questions',questions:qs.slice(0,numQ),currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
+    qs=expandTwoPart(qs);
+    const items=[];for(const g of qs){if(items.length+g.length>numQ)break;items.push(...g);}
+    if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
+    setState({screen:'questions',numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
+}
+
+// A two-part question becomes two items: Part A (the answer) then Part B
+// (which sentence proves it). Returns groups so A and B are never split.
+function expandTwoPart(qs){
+  return qs.map(q=>{
+    if(!q.part_b||!Array.isArray(q.part_b.choices))return[q];
+    const aText=((q.choices||[]).find(c=>c.charAt(0)===q.correct_choice)||'').replace(/^[A-D]\.\s*/,'');
+    const A={...q,partLabel:'Part A'};delete A.part_b;
+    const B={q:q.part_b.q,type:q.type==='math'?'general':q.type,skill:'evidence',difficulty:q.difficulty,choices:q.part_b.choices,correct_choice:q.part_b.correct_choice,full_answer:q.part_b.full_answer||'',partLabel:'Part B',partAAnswer:aText};
+    return[A,B];
+  });
 }
 
 function handleChoiceSelect(letter){
@@ -1463,7 +1523,7 @@ function handleChoiceSelect(letter){
     // Only a first-pick answer counts as correct. After a miss they still have
     // to find the right answer (good practice), but it scores as missed.
     const firstTry=(S.wrongChoices||[]).length===0;
-    const hl=S.hintLevel||0,pts=firstTry?pointsForAnswer(true,hl):0;
+    const hl=S.hintLevel||0,pts=firstTry?questionPoints(q,true,hl):0;
     const trail=S.persistedState?.avatarEquipped?.trail;
     setState({correctFeedback:{points:pts,trail:firstTry?trail:null,retry:!firstTry}});
     if(firstTry&&trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
@@ -1498,7 +1558,7 @@ async function handleSubmitAnswer(){
     const correct=await gradeAnswer(q.q,answer,q.acceptable_variants||[q.full_answer],q.full_answer,q.type==='math');
     setState({gradingLoading:false});
     if(correct){
-      const pts=pointsForAnswer(true,hl);
+      const pts=questionPoints(q,true,hl);
       const trail=S.persistedState?.avatarEquipped?.trail;
       setState({gradingLoading:false,correctFeedback:{points:pts,trail}});
       if(trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
@@ -1518,7 +1578,7 @@ async function handleSubmitAnswer(){
 }
 
 function finalizeQuestion(correct,userAnswer,overridePts){
-  const hl=S.hintLevel||0,pts=overridePts!==undefined?overridePts:pointsForAnswer(correct,hl);
+  const hl=S.hintLevel||0,pts=overridePts!==undefined?overridePts:questionPoints((S.questions||[])[S.currentQ],correct,hl);
   const q0=(S.questions||[])[S.currentQ]||{};
   const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null}];
   const newScore=S.score+(correct?1:0);
@@ -1624,7 +1684,8 @@ async function handleConfirmSave(){
   const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
   const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
   const numQ=S.numQ||p.numQuestions;
-  const{changes,announcements,meta}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},sessionBreakdown(S.questions,S.answers),p.name);
+  const bd=sessionBreakdown(S.questions,S.answers,p);
+  const{changes,announcements,meta}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},bd,p.name,p);
 
   const todayStr=S.sessionDate||new Date().toDateString();
 
@@ -1663,10 +1724,11 @@ async function handleConfirmSave(){
   const sessionEntry={
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
+    v:2,...bd,readingAtCap:meta.readingAtCap,
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,skill:q.skill||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
