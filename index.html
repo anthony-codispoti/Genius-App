@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-22d';
+const APP_VERSION='v2026-10-22e';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -748,7 +748,8 @@ ${petSvg}${accSvg}${hatSvg}
 async function callClaude(messages,system,maxTokens=2000){
   const key=loadApiKey();if(!key)throw new Error('No API key set.');
   const fp=fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:MODEL,max_tokens:maxTokens,system,messages})}).then(async r=>{if(!r.ok){const e=await r.text();throw new Error(`API ${r.status}: ${e}`);}return r.json();});
-  const tp=new Promise((_,rej)=>setTimeout(()=>rej(new Error('Request timed out (60s). Please retry.')),60000));
+  const ms=maxTokens>3000?180000:60000;
+  const tp=new Promise((_,rej)=>setTimeout(()=>rej(new Error(`Request timed out (${ms/1000}s). Please retry.`)),ms));
   const d=await Promise.race([fp,tp]);
   return d.content[0].text;
 }
@@ -965,7 +966,7 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_topic": "The specific subtopic you chose (e.g., 'Roman aqueducts' or 'how volcanoes form')",
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
-    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."} /* part_b ONLY on two-part questions */,"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
+    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."},"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
     math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"worked example with different numbers","full_answer":"..."}
   ]
 }
@@ -1556,10 +1557,10 @@ async function handleReadyForQuestions(){
     // Clamp in case numQuestions was later lowered below a combo saved earlier — always leave room for the mandatory lesson question.
     const numFactQ=Math.min(st.numFactQuestions||0,Math.max(numQ-numMathQ-1,0));
     const factCount=st.factIntensity||3;
-    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount})}],'You are a reading comprehension teacher. Return only valid JSON.',2500);
+    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount})}],'You are a reading comprehension teacher. Return only valid JSON — no comments, no trailing commas.',8000);
     let parsed,qs,factBullets=[],factTopic='';
-    try{parsed=JSON.parse(raw.replace(/```json\n?/g,'').replace(/```\n?/g,'').trim());}
-    catch{throw new Error('Could not parse questions. Please retry.');}
+    parsed=parseJsonLoose(raw);
+    if(!parsed)throw new Error('Could not parse questions. Please retry.');
     if(Array.isArray(parsed)){qs=parsed;}
     else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
     qs=expandTwoPart(qs);
@@ -1569,6 +1570,16 @@ async function handleReadyForQuestions(){
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
 }
 
+// Tolerant JSON parse: strips code fences, comments, trailing commas, and any
+// text around the outermost {...}.
+function parseJsonLoose(raw){
+  let t=String(raw||'').replace(/```json\n?/g,'').replace(/```\n?/g,'').trim();
+  try{return JSON.parse(t);}catch{}
+  const a=t.indexOf('{'),b=t.lastIndexOf('}');
+  if(a<0||b<=a)return null;
+  t=t.slice(a,b+1).replace(/\/\*[\s\S]*?\*\//g,'').replace(/,(\s*[}\]])/g,'$1');
+  try{return JSON.parse(t);}catch{return null;}
+}
 // A two-part question becomes two items: Part A (the answer) then Part B
 // (which sentence proves it). Returns groups so A and B are never split.
 function expandTwoPart(qs){
