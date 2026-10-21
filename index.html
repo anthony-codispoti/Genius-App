@@ -183,8 +183,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,readingFloor:3.0,readingCap:5.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,readingFloor:3.0,readingCap:5.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-22b';
+const APP_VERSION='v2026-10-22c';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -575,11 +575,17 @@ function mathSkillFor(p,domain){
 }
 // One-time reset of the reading level to match school STAR results (Oct 2026).
 const CALIBRATION_TAG='star-2026-10';
+const MATH_CALIBRATION_TAG='math-2026-10';
 function calibrate(p,st){
-  if(!st||st.calibration===CALIBRATION_TAG||p.calibratedReadingLevel==null)return st;
   // In memory only — it persists with the next completed session. Saving here
   // could push a stale device's copy over newer progress in the cloud.
-  return{...st,readingLevel:p.calibratedReadingLevel,readingCap:st.readingCap??p.readingCap,readingConsec5:0,readingConseqLow:0,calibration:CALIBRATION_TAG};
+  if(!st)return st;
+  let ns=st;
+  if(st.calibration!==CALIBRATION_TAG&&p.calibratedReadingLevel!=null)
+    ns={...ns,readingLevel:p.calibratedReadingLevel,readingCap:st.readingCap??p.readingCap,readingConsec5:0,readingConseqLow:0,calibration:CALIBRATION_TAG};
+  if(st.mathCalibration!==MATH_CALIBRATION_TAG&&p.calibratedMathLevel!=null)
+    ns={...ns,mathLevel:p.calibratedMathLevel,mathConsec5:0,mathConseqLow:0,mathUpDates:[],mathCalibration:MATH_CALIBRATION_TAG};
+  return ns;
 }
 const READING_SKILLS={
   inference:'Inference (figure out what the text implies, using evidence)',
