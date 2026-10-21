@@ -183,8 +183,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Fractions','Measurement and Data','Fractions','Measurement and Data','Algebra','Geometry'],numQuestions:5,interests:['football','Fortnite'],gender:'boy'},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy'},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Geometry','The Number System (operations with positive/negative fractions and decimals)','Statistics and Probability','Geometry','Expressions and Equations','Ratios and Proportional Relationships'],numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,readingFocus:['text_complexity','informational','inference','theme']},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-04a';
+const APP_VERSION='v2026-10-21a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -463,7 +463,7 @@ function applyRemoteIfStillNewer(p,remote){
     if(currentLocalTime>remoteTime)return false; // a newer local save happened during the fetch — keep it
   }catch{}
   applyRemoteState(p,remote);
-  S.persistedState=remote;
+  S.persistedState=calibrate(p,remote);
   if(remote.activeTheme)applyTheme(remote.activeTheme);
   render();
   return true;
@@ -519,23 +519,88 @@ function saveApiKey(k){localStorage.setItem(API_KEY_KEY,k);}
 function loadActiveChild(){return PROFILES[localStorage.getItem(ACTIVE_CHILD_KEY)]||PROFILES.gio;}
 function saveActiveChild(id){localStorage.setItem(ACTIVE_CHILD_KEY,id);}
 
+// ─── Reading difficulty (what the reading level actually controls) ─────────────
+// Before Oct 2026 the reading level was never sent to the story writer, so the
+// number climbed without the text getting harder. This turns the level into
+// concrete text targets (Lexile band, sentence shape, vocabulary, structure).
+function lexileFor(level){
+  const pts=[[2,420],[3,620],[4,770],[5,880],[6,955],[7,1020],[8,1080],[9,1140],[10,1200],[11,1260],[12,1320]];
+  const l=Math.max(2,Math.min(12,level));
+  for(let i=0;i<pts.length-1;i++){const[a,la]=pts[i],[b,lb]=pts[i+1];if(l<=b)return Math.round((la+(lb-la)*(l-a)/(b-a))/10)*10;}
+  return 1320;
+}
+function readingSpec(level,profile){
+  const lx=lexileFor(level);
+  const sent=level<4?'10-13':level<6?'12-16':level<8?'14-20':level<10?'16-22':'18-25';
+  const vocab=level<4?'mostly everyday words, plus 3-4 new words whose meaning is clear from context'
+    :level<6?'5-6 less-common, content-specific or figurative words (e.g. "reluctant", "vast", "eroded") whose meaning can be worked out from context'
+    :level<8?'6-8 academic or domain words (e.g. "inevitable", "meticulous", "reservoir") plus at least two figurative phrases (metaphor, idiom)'
+    :'8+ sophisticated words and figurative language; some meaning must be inferred, not explained';
+  const struct=level<4?'mostly chronological; one clear flashback or cause-and-effect chain'
+    :level<6?'mix simple and compound/complex sentences; include at least one shift in time or point of view'
+    :level<8?'varied sentence types including complex sentences with subordinate clauses; layered plot with a subplot or a character whose motives are revealed indirectly'
+    :'complex sentences, subtle shifts in tone, implied (not stated) motives and theme';
+  return`TEXT DIFFICULTY — target reading level ${level.toFixed(1)} (about ${lx}L Lexile):
+- Average sentence length ${sent} words, varied (some short, some long)
+- Vocabulary: ${vocab}
+- Structure: ${struct}
+- Leave room for inference: show character motives and the theme through actions and dialogue — the reader must figure some things out
+- Content, themes and interests must still be right for a ${profile.age}-year-old — make the LANGUAGE harder, not the subject matter older`;
+}
+// One-time reset of the reading level to match school STAR results (Oct 2026).
+const CALIBRATION_TAG='star-2026-10';
+function calibrate(p,st){
+  if(!st||st.calibration===CALIBRATION_TAG||p.calibratedReadingLevel==null)return st;
+  // In memory only — it persists with the next completed session. Saving here
+  // could push a stale device's copy over newer progress in the cloud.
+  return{...st,readingLevel:p.calibratedReadingLevel,readingConsec5:0,readingConseqLow:0,calibration:CALIBRATION_TAG};
+}
+const READING_SKILLS={
+  inference:'Inference (figure out what the text implies, using evidence)',
+  theme:'Theme / central message',
+  main_idea:'Main idea & summarizing',
+  compare_contrast:'Compare & contrast (two characters, events, choices, or the story vs. the document)',
+  vocab_context:'Word meaning from context (incl. figurative language)',
+  text_structure:'Text structure & point of view (how the text is built, who is telling it)',
+  author_purpose:'Author\'s purpose / craft',
+  integration:'Integrate ideas from the story AND the in-story document',
+  informational:'Informational text (the in-story document)',
+  text_complexity:'Hardest passage (the most complex sentences/ideas in the text)',
+  key_details:'Key details that support a bigger idea',
+};
+
 // ─── Format & Level helpers ────────────────────────────────────────────────────
 function getFormatForDate(d){const day=d.getDay();if(day===1||day===3||day===5)return'Choose-Your-Path';if(day===2||day===4||day===6)return'Detective';return getISOWeek(d)%2===0?'Choose-Your-Path':'Detective';}
 function getISOWeek(d){const u=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const dn=u.getUTCDay()||7;u.setUTCDate(u.getUTCDate()+4-dn);const y=new Date(Date.UTC(u.getUTCFullYear(),0,1));return Math.ceil((((u-y)/86400000)+1)/7);}
 
-function computeLevelChanges(state,score,total,pname){
-  total=total||5;
+// Reading and math move independently. Reading counts only FIRST-TRY answers on
+// reading questions; math counts the math questions. (Previously one combined
+// score moved both, and multiple choice allowed unlimited retries.)
+function sessionBreakdown(questions,answers){
+  let rC=0,rT=0,mC=0,mT=0;
+  (questions||[]).forEach((q,i)=>{const a=(answers||[])[i]||{};
+    if(q.type==='math'){mT++;if(a.correct)mC++;}else{rT++;if(a.correct)rC++;}});
+  return{rC,rT,mC,mT};
+}
+function computeLevelChanges(state,bd,pname){
   const c={readingLevel:state.readingLevel,mathLevel:state.mathLevel,readingConsec5:state.readingConsec5||0,readingConseqLow:state.readingConseqLow||0,mathConsec5:state.mathConsec5||0,mathConseqLow:state.mathConseqLow||0};
-  const ann=[],meta={readingLevelUp:false,mathLevelUp:false};
-  const low=Math.ceil(total*0.55);
-  let rc5=c.readingConsec5,rcL=c.readingConseqLow;
-  if(score===total){rc5++;rcL=0;}else if(score<low){rcL++;rc5=0;}else{rc5=0;rcL=0;}
-  if(rc5>=2){c.readingLevel=Math.round((state.readingLevel+0.1)*10)/10;rc5=0;meta.readingLevelUp=true;ann.push(`${pname} moved up to ${c.readingLevel.toFixed(1)} in reading — earned it.`);}
-  c.readingConsec5=rc5;c.readingConseqLow=rcL;
-  let mc5=c.mathConsec5,mcL=c.mathConseqLow;
-  if(score===total){mc5++;mcL=0;}else if(score<low){mcL++;mc5=0;}else{mc5=0;mcL=0;}
-  if(mc5>=2){c.mathLevel=Math.round((state.mathLevel+0.1)*10)/10;mc5=0;meta.mathLevelUp=true;ann.push(`Math is moving up to ${c.mathLevel.toFixed(1)}. Keep it going.`);}
-  c.mathConsec5=mc5;c.mathConseqLow=mcL;
+  const ann=[],meta={readingLevelUp:false,mathLevelUp:false,readingLevelDown:false,mathLevelDown:false};
+  const r=x=>Math.round(x*10)/10;
+  if(bd.rT>0){
+    const pct=bd.rC/bd.rT;
+    let up=c.readingConsec5,low=c.readingConseqLow;
+    if(pct>=0.99){up++;low=0;}else if(pct<=0.5){low++;up=0;}else{up=0;low=0;}
+    if(up>=2){c.readingLevel=r(c.readingLevel+0.1);up=0;meta.readingLevelUp=true;ann.push(`${pname} moved up to ${c.readingLevel.toFixed(1)} in reading — earned it.`);}
+    if(low>=2){c.readingLevel=r(Math.max(1,c.readingLevel-0.2));low=0;meta.readingLevelDown=true;ann.push(`Reading eased back to ${c.readingLevel.toFixed(1)} — two tough sessions in a row.`);}
+    c.readingConsec5=up;c.readingConseqLow=low;
+  }
+  if(bd.mT>0){
+    let up=c.mathConsec5,low=c.mathConseqLow;
+    if(bd.mC===bd.mT){up++;low=0;}else if(bd.mC===0){low++;up=0;}else{up=0;low=0;}
+    if(up>=2){c.mathLevel=r(c.mathLevel+0.1);up=0;meta.mathLevelUp=true;ann.push(`Math is moving up to ${c.mathLevel.toFixed(1)}. Keep it going.`);}
+    if(low>=2){c.mathLevel=r(Math.max(1,c.mathLevel-0.1));low=0;meta.mathLevelDown=true;ann.push(`Math eased back to ${c.mathLevel.toFixed(1)}.`);}
+    c.mathConsec5=up;c.mathConseqLow=low;
+  }
   return{changes:c,announcements:ann,meta};
 }
 
@@ -674,6 +739,12 @@ function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,life
   const formatInst=isCYP
     ?`FORMAT: Choose-Your-Path.\nWrite the story up to a decision point (~${part1Words} words). End with EXACTLY:\nOption A: [description]\nOption B: [description]\nSTOP there.`
     :`FORMAT: Detective Mystery.\nBuild a mystery solvable only through careful reading. The math situation is the key clue. Resolve it by the end. ~${wordLength} words.`;
+  const docInst=`
+IN-STORY DOCUMENT (informational text practice) — REQUIRED:
+- Partway through, a character reads a real-world style nonfiction document: a news article, field-guide entry, museum placard, encyclopedia excerpt, or instruction sheet (${isCYP?'place it before the decision point':'it should help with the mystery'})
+- 120-200 words, set apart on its own lines and introduced with a short title in capitals (e.g. "THE HARBOR GAZETTE — Storm Season Warning")
+- Written as true informational text (headings or clear structure, facts, cause/effect or problem/solution), at the same difficulty target
+- Something in the document should be compared or contrasted with what happens in the story (it agrees, disagrees, or shows another side)`;
   const heroNote=heroName?`\nUse "${heroName}" as the main character or sidekick name.`:'';
   const contNote=storySummary?`\nCONTINUITY (only if topic asks to continue): ${storySummary}`:'';
   const fc=factCount||3;
@@ -692,7 +763,7 @@ REQUESTED TOPIC/SETTING — HIGHEST PRIORITY, MUST BE HONORED EXACTLY:
 ${topic}${contNote}
 Everything below (facts, math, life lesson) must be built to fit inside this setting/request. Never drop, water down, or substitute this request to make room for anything else in this prompt.
 
-STYLE: ${profile.sentenceComplexity}${heroNote}
+${readingSpec(readingLevel,profile)}${heroNote}
 ${factNote}
 MATH SITUATION — CRITICAL:
 - Embed exactly ONE math situation matched to level ${mathLevel.toFixed(1)} in "${mathDomain}", set within the requested topic/setting above
@@ -703,13 +774,14 @@ MATH SITUATION — CRITICAL:
 LIFE LESSON: "${lifeLesson}" — shown through character ACTIONS only, never stated
 
 ${formatInst}
+${docInst}
 
 Start the story immediately — no title headers, no preamble.`;
 }
 
 function buildContinuationPrompt({firstPart,choice,profile,readingLevel,mathLevel,mathDomain,lifeLesson,wordLength}){
   return `Continue this Choose-Your-Path story for ${profile.name}, age ${profile.age}.
-STYLE: ${profile.sentenceComplexity}
+${readingSpec(readingLevel,profile)}
 Math domain: ${mathDomain} at level ${mathLevel.toFixed(1)} — DO NOT solve or reveal the math answer.
 Life lesson: "${lifeLesson}" through actions only.
 
@@ -728,7 +800,7 @@ function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,
   const nf=numFactQ||0;
   const fc=factCount||3;
   const nGeneral=Math.max(n-nm-nf-1,0); // 1 slot reserved for the mandatory "lesson" question
-  return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)}.
+  return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)} (about ${lexileFor(readingLevel)}L).
 
 Story:
 ---
@@ -737,21 +809,23 @@ ${story}
 Math domain: ${mathDomain} | Life lesson theme: "${lifeLesson}"
 
 ═══════════════════════════════════════════
-CRITICAL RULES — READ CAREFULLY:
+WHAT TO TEST — these mirror the skills on ${profile.name}'s school reading test (Star Reading):
 ═══════════════════════════════════════════
+Every non-math question must target ONE skill from this list and must require THINKING, not just finding a sentence:
+${Object.entries(READING_SKILLS).map(([k,v])=>`   - ${k}: ${v}`).join('\n')}
 
-QUESTION STRUCTURE:
+${profile.name.toUpperCase()}'S FOCUS SKILLS (from school testing — at least ${Math.min(2,nGeneral+1)} questions must use these): ${(profile.readingFocus||['inference','theme']).join(', ')}
+
+RULES:
+✓ At least 1 question about the IN-STORY DOCUMENT (the informational text) — skill informational, integration, or compare_contrast
+✓ At least 1 inference question whose answer is NOT stated word-for-word — the child must combine clues
+✓ At least 1 compare_contrast question when the focus list includes it
+✓ Vocabulary questions quote the sentence and ask what the word/phrase means THERE
+✓ Theme/lesson question asks what the story teaches or what a character's actions show — never just "what did X do"
 ✗ NEVER use "and" to join two questions into one
-✗ NEVER ask about feelings, emotions, or motivations ("how did he feel", "why did she feel")
-✗ NEVER ask inference questions — only facts directly stated in the story
-✓ Every question must have ONE specific answer clearly stated in the story text
-✓ Use these templates (vary them):
-   - "What did [name] [do/say/find/use] when [specific moment]?"
-   - "Where was [name] when [specific moment]?"
-   - "What [object/number/name/place] did [name] [have/find/need/use]?"
-   - "What happened right after [specific moment]?"
-   - "Who [did specific action]?"
-   - "Why did the author describe [specific detail]?" (author's purpose — max 1 of these)
+✗ No pure "what color was the hat" recall questions
+✓ Every question must have ONE best answer that a careful reader can defend with evidence from the text
+✓ Include "skill":"<one key from the list>" on every question (math questions use "skill":"math")
 
 MATH QUESTIONS (exactly ${nm}, type "math"):
    - Ask ${profile.name} to calculate the answer himself
@@ -781,7 +855,8 @@ MULTIPLE CHOICE (non-math questions ONLY):
    - "choices": ["A. [correct or wrong answer]","B. ...","C. ...","D. ..."]
    - "correct_choice": "A" (or B, C, D — whichever letter holds the correct answer)
    - Randomize which letter is correct each time
-   - Wrong choices must be plausible but clearly wrong to a careful reader
+   - Wrong choices must be plausible: use a detail that IS in the story but doesn't answer the question, a too-literal reading, or a half-right answer. Do NOT make them silly or obviously wrong
+   - Keep all 4 choices similar in length so the longest isn't always right
    - Do NOT include "acceptable_variants" for these — just choices + correct_choice
    Math questions stay as typed-answer format (no choices).
 
@@ -790,8 +865,8 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_topic": "The specific subtopic you chose (e.g., 'Roman aqueducts' or 'how volcanoes form')",
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
-    non-math: {"q":"...","type":"lesson|general|fact","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
-    math:      {"q":"...","type":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
+    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
+    math:      {"q":"...","type":"math","skill":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
   ]
 }
 
@@ -799,7 +874,7 @@ Return a JSON OBJECT (not array) with these keys:
 - fact_bullets: exactly ${fc} real facts from the domain — short, punchy, surprising. NOT summaries of the story. Real-world truths that appeared in the story.
 - questions array: exactly ${n} questions total
   - Exactly ${nm} type "math"
-  ${nf>0?`- Exactly ${nf} type "fact"\n  `:''}- Exactly 1 type "lesson" (about what a character DID, not how they felt)
+  ${nf>0?`- Exactly ${nf} type "fact"\n  `:''}- Exactly 1 type "lesson" (skill "theme": what the story teaches, shown through what characters did)
   - Remaining ${nGeneral} type "general"
 - Return ONLY the JSON object, nothing else`;
 }
@@ -980,9 +1055,9 @@ function renderQuestions(){
 
         ${S.correctFeedback?`
           <div class="correct-celebrate mt12">
-            <div class="celebrate-check">✓</div>
-            <div class="celebrate-pts">Correct!</div>
-            <div class="celebrate-bonus">+${S.correctFeedback.points} points</div>
+            <div class="celebrate-check">${S.correctFeedback.retry?'🔎':'✓'}</div>
+            <div class="celebrate-pts">${S.correctFeedback.retry?'Found it':'Correct!'}</div>
+            <div class="celebrate-bonus">${S.correctFeedback.retry?'Only first tries earn points — read closely next time':`+${S.correctFeedback.points} points`}</div>
             <div class="celebrate-sub">${qi+1<total?'Moving to next question…':'Almost done…'}</div>
           </div>
         `:q.choices&&q.type!=='math'?`
@@ -1038,8 +1113,9 @@ function renderParentReview(){
   const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
   const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
   const numQ=S.numQ||p.numQuestions;
-  const{announcements}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},rs,numQ,p.name);
-  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
+  const bd=sessionBreakdown(S.questions,S.answers);
+  const{announcements}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},bd,p.name);
+  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math: ${bd.mC}/${bd.mT}. Levels move on these, not the session score.</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
 }
 
 // ─── Rewards ──────────────────────────────────────────────────────────────────
@@ -1147,7 +1223,11 @@ function renderHistory(){
   const p=S.activeProfile,st=S.persistedState;
   const history=(st.sessionHistory||[]).slice().reverse();
   const histHTML=history.length===0?'<p class="text-muted text-sm">No sessions completed yet.</p>':history.map(sess=>`<div class="history-session"><div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;"><div><div class="bold text-sm">${eh(sess.date)}</div><div class="text-xs text-muted">${eh(sess.format)} · Math: ${eh(sess.domain)}${sess.factTopic||sess.factDomain?` · 📚 ${eh(sess.factTopic||sess.factDomain)}`:''}</div></div><div style="display:flex;gap:8px;align-items:center;"><span class="tag${sess.score===sess.total?' tag-success':''}">${sess.score}/${sess.total}</span><span class="text-xs text-warning">+${sess.pointsEarned||0} pts</span></div></div><div class="mt8">${(sess.questions||[]).map((q,qi)=>`<div class="history-q"><div style="display:flex;justify-content:space-between;gap:8px;"><div class="text-sm"><span class="bold">Q${qi+1}:</span> ${eh(q.q)}</div><div>${q.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${q.hintsUsed>0?` <span class="text-xs text-muted">${q.hintsUsed}h</span>`:''}</div></div>${q.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(q.userAnswer)}</div>`:''}<div class="text-xs mt4 text-muted">Answer: ${eh(q.fullAnswer)}</div></div>`).join('')}${sess.story?`<details class="mt8"><summary class="history-story-toggle">📖 View full story</summary><div class="history-story">${eh(sess.story)}</div></details>`:''}</div></div>`).join('');
-  return`<div class="session-hdr"><div><h2>📋 ${eh(p.name)}'s Session History</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>${histHTML}`;
+  const sk={};
+  (st.sessionHistory||[]).forEach(se=>(se.questions||[]).forEach(q=>{if(!q.skill||q.skill==='math')return;(sk[q.skill]=sk[q.skill]||{c:0,t:0}).t++;if(q.correct)sk[q.skill].c++;}));
+  const skRows=Object.entries(sk).sort((a,b)=>a[1].c/a[1].t-b[1].c/b[1].t).map(([k,v])=>{const pct=Math.round(100*v.c/v.t);const col=pct>=80?'var(--success)':pct>=60?'var(--warning)':'var(--danger)';return`<div class="pr-field"><label style="min-width:0;flex:1;">${eh((READING_SKILLS[k]||k).split(' (')[0])}</label><span class="text-xs text-muted">${v.c}/${v.t}</span><span class="bold" style="color:${col};min-width:44px;text-align:right;">${pct}%</span></div>`;}).join('');
+  const skCard=`<div class="card"><h3 class="mb4">🎯 Reading skills (first try)</h3><p class="text-xs text-muted mb8">Same skill areas as the school Star report. Weakest first. Fills in as new sessions are completed.</p>${skRows||'<p class="text-muted text-sm">No skill-tagged sessions yet.</p>'}</div>`;
+  return`<div class="session-hdr"><div><h2>📋 ${eh(p.name)}'s Session History</h2></div><button class="btn btn-secondary" style="padding:7px 14px;" id="backHomeBtn">← Home</button></div>${skCard}${histHTML}`;
 }
 
 function renderFactPick(){
@@ -1266,7 +1346,7 @@ function goTo(screen){setState({screen,error:null,expandedQDot:null});}
 async function handleSetupContinue(){
   const k=val('apiKeyInput').trim();if(!k){setState({error:'Please enter your Anthropic API key.'});return;}
   saveApiKey(k);
-  const p=loadActiveChild(),st=loadState(p);
+  const p=loadActiveChild(),st=calibrate(p,loadState(p));
   if(st.activeTheme)applyTheme(st.activeTheme);
   setState({screen:'home',activeProfile:p,persistedState:st,error:null});
   // loadState() above is local-storage-only, so a device that never uses the
@@ -1281,7 +1361,7 @@ async function handleSetupContinue(){
 async function switchChild(id){
   const p=PROFILES[id];if(!p)return;
   saveActiveChild(id);
-  const st=loadState(p);
+  const st=calibrate(p,loadState(p));
   if(st.activeTheme)applyTheme(st.activeTheme);
   setState({activeProfile:p,persistedState:st,screen:'home',error:null,levelAnnouncements:[],newBadges:[]});
   const remote=await pullFromSupabase(p);
@@ -1380,11 +1460,15 @@ function handleChoiceSelect(letter){
   const q=(S.questions||[])[S.currentQ];
   if(!q||S.correctFeedback)return;
   if(letter===q.correct_choice){
-    const hl=S.hintLevel||0,pts=pointsForAnswer(true,hl);
+    // Only a first-pick answer counts as correct. After a miss they still have
+    // to find the right answer (good practice), but it scores as missed.
+    const firstTry=(S.wrongChoices||[]).length===0;
+    const hl=S.hintLevel||0,pts=firstTry?pointsForAnswer(true,hl):0;
     const trail=S.persistedState?.avatarEquipped?.trail;
-    setState({correctFeedback:{points:pts,trail}});
-    if(trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
-    setTimeout(()=>finalizeQuestion(true,letter),1600);
+    setState({correctFeedback:{points:pts,trail:firstTry?trail:null,retry:!firstTry}});
+    if(firstTry&&trail&&AV_TRAIL[trail])spawnTrail(AV_TRAIL[trail].particles);
+    const picked=firstTry?letter:`${(S.wrongChoices||[]).join(', ')} → ${letter}`;
+    setTimeout(()=>finalizeQuestion(firstTry,picked,pts),firstTry?1600:2600);
   }else{
     const newWrong=[...(S.wrongChoices||[]),letter];
     const newWrongAttempts=[...(S.wrongAttempts||[]),`Choice ${letter}`];
@@ -1435,7 +1519,8 @@ async function handleSubmitAnswer(){
 
 function finalizeQuestion(correct,userAnswer,overridePts){
   const hl=S.hintLevel||0,pts=overridePts!==undefined?overridePts:pointsForAnswer(correct,hl);
-  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts}];
+  const q0=(S.questions||[])[S.currentQ]||{};
+  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null}];
   const newScore=S.score+(correct?1:0);
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
   if(isLast)setState({answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
@@ -1539,7 +1624,7 @@ async function handleConfirmSave(){
   const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
   const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
   const numQ=S.numQ||p.numQuestions;
-  const{changes,announcements,meta}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},score,numQ,p.name);
+  const{changes,announcements,meta}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},sessionBreakdown(S.questions,S.answers),p.name);
 
   const todayStr=S.sessionDate||new Date().toDateString();
 
@@ -1581,7 +1666,7 @@ async function handleConfirmSave(){
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,skill:q.skill||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
