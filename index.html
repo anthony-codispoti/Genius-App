@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-22c';
+const APP_VERSION='v2026-10-22d';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -425,7 +425,7 @@ const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQues
 // on a screen worth resuming, so a refresh (or a crash that forces one) can
 // put the reader right back where they were instead of discarding everything.
 const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
-const DRAFT_FIELDS=['screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic'];
+const DRAFT_FIELDS=['storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic'];
 function draftKey(p){return p.storageKey+'_draft';}
 function saveDraft(){
   if(!S.activeProfile)return;
@@ -662,7 +662,7 @@ function computeLevelChanges(state,bd,pname,profile){
   return{changes:c,announcements:ann,meta};
 }
 // Points: first-try correct earns the usual points; stretch (⭐) questions add a bonus.
-function questionPoints(q,correct,hintsUsed){return correct?pointsForAnswer(true,hintsUsed)+(q&&q.difficulty==='stretch'?5:0):0;}
+function questionPoints(q,correct,hintsUsed){return correct?pointsForAnswer(true,hintsUsed)+(q&&q.difficulty==='stretch'&&!hintsUsed?5:0):0;}
 
 // ─── Gamification ─────────────────────────────────────────────────────────────
 // Points: correct no hints=10, hint1=7, hint2=4, hint3=1, wrong=0
@@ -1179,7 +1179,10 @@ function renderQuestions(){
           <textarea id="answerInput" style="min-height:80px;" rows="3" placeholder="Type your answer here…"></textarea></div>
           <div class="row mt10">
             <button class="btn btn-primary" id="submitAnswerBtn" ${S.gradingLoading?'disabled':''}>${S.gradingLoading?'Checking…':'Submit answer'}</button>
-            ${hl<3?`<button class="btn btn-secondary" id="hintBtn" ${S.gradingLoading?'disabled':''}>Get a hint (${3-hl} left)</button>`:''}
+            ${hl<3&&(S.wrongAttempts||[]).length>0?`<button class="btn btn-secondary" id="hintBtn" ${S.gradingLoading?'disabled':''}>Get a hint (${3-hl} left)</button>`:''}
+          </div>
+          ${hl<3&&!(S.wrongAttempts||[]).length?`<p class="text-xs text-muted mt8">Give it your best try first — hints unlock after your first answer.</p>`:''}
+          <div>
           </div>
           ${hl>=3?`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`:''}
           ${wrongAttempts.length>0?`<div class="mt10 text-center"><button class="parent-override-btn" id="parentOverrideBtn">Parent: mark correct</button></div>`:''}
@@ -1528,8 +1531,8 @@ async function startSession(topicInput,isContinuation){
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3})}],'You are a skilled children\'s fiction writer.',3000);
-    if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story});
-    else setState({screen:'story-detective',fullStory:story});
+    if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story,storyStartedAt:Date.now(),storySeconds:null});
+    else setState({screen:'story-detective',fullStory:story,storyStartedAt:Date.now(),storySeconds:null});
   }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
 }
 
@@ -1543,6 +1546,8 @@ async function generateContinuation(choice){
 }
 
 async function handleReadyForQuestions(){
+  // Effort tracking: how long the story was on screen before questions (incl. the CYP continuation)
+  if(S.storySeconds==null&&S.storyStartedAt)S.storySeconds=Math.round((Date.now()-S.storyStartedAt)/1000);
   setState({screen:'loading',loadingMsg:'Generating questions…'});
   const p=S.activeProfile,st=S.persistedState;
   try{
@@ -1560,7 +1565,7 @@ async function handleReadyForQuestions(){
     qs=expandTwoPart(qs);
     const items=[];for(const g of qs){if(items.length+g.length>numQ)break;items.push(...g);}
     if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
-    setState({screen:'questions',numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
+    setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
 }
 
@@ -1641,11 +1646,13 @@ async function handleSubmitAnswer(){
 function finalizeQuestion(correct,userAnswer,overridePts){
   const hl=S.hintLevel||0,pts=overridePts!==undefined?overridePts:questionPoints((S.questions||[])[S.currentQ],correct,hl);
   const q0=(S.questions||[])[S.currentQ]||{};
-  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null}];
+  const secs=S.qStartedAt?Math.round((Date.now()-S.qStartedAt)/1000):null;
+  const tries=Math.max((S.wrongChoices||[]).length,(S.wrongAttempts||[]).length)+(userAnswer?1:0);
+  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null,secs,tries}];
   const newScore=S.score+(correct?1:0);
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
-  if(isLast)setState({answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
-  else setState({answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
+  if(isLast)setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
+  else setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
 }
 function spawnTrail(particles){
   for(let i=0;i<10;i++){
@@ -1786,10 +1793,11 @@ async function handleConfirmSave(){
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
     v:2,...bd,readingAtCap:meta.readingAtCap,
+    storySeconds:S.storySeconds??null,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,tries:a.tries??null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
