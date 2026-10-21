@@ -183,8 +183,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Geometry','The Number System (operations with positive/negative fractions and decimals)','Statistics and Probability','Geometry','Expressions and Equations','Ratios and Proportional Relationships'],numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,readingFloor:3.0,readingCap:5.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,readingFloor:3.0,readingCap:5.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-22a';
+const APP_VERSION='v2026-10-22b';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -416,7 +416,7 @@ async function freshestState(p){
 // blob back — so finishing a session never silently reverts a settings
 // change made on another device (or an earlier, unreloaded tab) in the
 // meantime, without touching the session's own progress/points arithmetic.
-const SETTINGS_FIELDS=['readingCap','numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
+const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
 
 // ─── In-progress session draft ──────────────────────────────────────────────
 // A story (and especially the questions step right after it) can fail on a
@@ -547,6 +547,32 @@ function readingSpec(level,profile){
 - Leave room for inference: show character motives and the theme through actions and dialogue — the reader must figure some things out
 - Content, themes and interests must still be right for a ${profile.age}-year-old — make the LANGUAGE harder, not the subject matter older`;
 }
+// What each math domain means at each boy's grade (Ohio standards). The domain
+// label alone ("Geometry") let the AI drift down to 3rd-grade arithmetic.
+const MATH_SKILLS={
+  valentino:{
+    'Measurement and Data':'area and perimeter of rectangles (including finding a missing side), converting units (ft/in, yd/ft, hr/min, lb/oz, L/mL), elapsed time and money word problems, line plots with fractions, measuring and adding angles',
+    'Geometry':'angles (right/acute/obtuse, angle measures that add together), parallel and perpendicular lines, classifying triangles and quadrilaterals, lines of symmetry, area/perimeter of shapes made of rectangles',
+    'Fractions':'equivalent fractions, comparing fractions with different denominators, adding/subtracting fractions and mixed numbers with like denominators, multiplying a fraction by a whole number, decimals to hundredths',
+    'Algebra':'multi-step word problems with all four operations, interpreting remainders, factors and multiples, number patterns',
+    'Numbers and Operations':'multi-digit multiplication (4-digit x 1-digit, 2-digit x 2-digit), division with remainders, rounding and estimating',
+    'Ratios and Proportions':'comparing with multiplication ("3 times as many"), unit conversions',
+    'Statistics and Probability':'line plots and bar graphs with fractional data, comparing data sets',
+  },
+  gio:{
+    'Numbers and Operations':'adding, subtracting, multiplying and dividing positive and negative fractions, decimals and integers; absolute value as distance from zero; the number line',
+    'Geometry':'area of triangles, parallelograms, trapezoids and composite shapes; volume of rectangular prisms with fractional edges; surface area from nets; distance on the coordinate plane',
+    'Statistics and Probability':'mean, median, mode, range and interquartile range; dot plots and histograms; simple probability',
+    'Algebra':'writing and solving one- and two-step equations and inequalities, evaluating expressions, distributive property',
+    'Ratios and Proportions':'unit rates, ratio tables, percent of a number, percent increase/decrease, discounts and tax',
+    'Measurement and Data':'converting units with ratios, rates like speed = distance / time',
+    'Fractions':'dividing fractions by fractions, operations with mixed numbers',
+  },
+};
+function mathSkillFor(p,domain){
+  if(domain&&domain.startsWith('Class topic: '))return domain.slice(13);
+  return (MATH_SKILLS[p.id]||{})[domain]||domain;
+}
 // One-time reset of the reading level to match school STAR results (Oct 2026).
 const CALIBRATION_TAG='star-2026-10';
 function calibrate(p,st){
@@ -581,7 +607,7 @@ function sessionBreakdown(questions,answers,profile){
   const focus=(profile&&profile.readingFocus)||[];
   let rC=0,rT=0,mC=0,mT=0,fC=0,fT=0;
   (questions||[]).forEach((q,i)=>{const a=(answers||[])[i]||{};
-    if(q.type==='math'){mT++;if(a.correct)mC++;return;}
+    if(q.type==='math'){mT++;if(a.correct&&!(a.hintsUsed>0))mC++;return;}
     rT++;if(a.correct)rC++;
     if(focus.includes(q.skill)||q.difficulty==='stretch'){fT++;if(a.correct)fC++;}});
   return{rC,rT,mC,mT,fC,fT};
@@ -739,7 +765,29 @@ function gradeLocally(studentAnswer,variants){
   });
 }
 
-async function gradeAnswer(question,studentAnswer,variants,fullAnswer,isMath){
+// Math: compare the LAST number the child typed to the expected value.
+// (The old text match accepted "500" when the answer was 5.)
+function parseNumbers(str){
+  const t=String(str||'').replace(/(\d),(?=\d{3})/g,'$1').replace(/[−–]/g,'-');
+  const re=/(-?\s?\d+)\s+(\d+)\/(\d+)|(-?\s?\d+)\/(\d+)|(-?\s?\d*\.?\d+)/g;
+  const out=[];let m;
+  while((m=re.exec(t))){
+    if(m[1]!==undefined){const w=parseFloat(m[1].replace(/\s/g,''));const fr=+m[2]/+m[3];out.push(w<0||/^-/.test(m[1].trim())?w-fr:w+fr);}
+    else if(m[4]!==undefined){out.push(parseFloat(m[4].replace(/\s/g,''))/ +m[5]);}
+    else out.push(parseFloat(m[6].replace(/\s/g,'')));
+  }
+  return out.filter(n=>isFinite(n));
+}
+function gradeMathLocally(studentAnswer,q){
+  const exp=parseNumbers(q.answer_value!=null?String(q.answer_value):(q.acceptable_variants||[])[0]||'');
+  const got=parseNumbers(studentAnswer);
+  if(!exp.length)return null; // can't tell — fall back to AI
+  if(!got.length)return false;
+  const e=exp[exp.length-1],g=got[got.length-1];
+  return Math.abs(e-g)<=Math.max(1e-6,Math.abs(e)*1e-4)||Math.abs(e-g)<0.006&&String(e).includes('.');
+}
+async function gradeAnswer(question,studentAnswer,variants,fullAnswer,isMath,q){
+  if(isMath&&q){const r=gradeMathLocally(studentAnswer,q);if(r!==null)return r;}
   // Try local first
   if(gradeLocally(studentAnswer,variants))return true;
   // AI fallback — very lenient, only use to catch "close but worded differently"
@@ -751,7 +799,7 @@ Correct answer: ${fullAnswer}
 Acceptable phrasings: ${variants.join(' | ')}
 Child's answer: "${studentAnswer}"
 
-${isMath?'Accept if the correct number/calculation is present, regardless of phrasing.':'Be VERY lenient. Accept if the child clearly knows the right fact, even if phrased differently or incompletely. Only mark wrong if the key fact is simply not there or is factually incorrect.'}
+${isMath?'Accept ONLY if the child\'s final number equals the correct answer. A different number is wrong even if it contains the same digits.':'Be VERY lenient. Accept if the child clearly knows the right fact, even if phrased differently or incompletely. Only mark wrong if the key fact is simply not there or is factually incorrect.'}
 
 Reply ONLY with: {"correct":true} or {"correct":false}`;
     const raw=await callClaude([{role:'user',content:prompt}],'You grade children\'s answers very leniently. Return only valid JSON.',100);
@@ -761,7 +809,7 @@ Reply ONLY with: {"correct":true} or {"correct":false}`;
 }
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-function buildStoryPrompt({format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain,factCount}){
+function buildStoryPrompt({mathCount,format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain,factCount}){
   const isCYP=format==='Choose-Your-Path';
   const part1Words=Math.round(wordLength*0.6);
   const formatInst=isCYP
@@ -794,8 +842,10 @@ Everything below (facts, math, life lesson) must be built to fit inside this set
 ${readingSpec(readingLevel,profile)}${heroNote}
 ${factNote}
 MATH SITUATION — CRITICAL:
-- Embed exactly ONE math situation matched to level ${mathLevel.toFixed(1)} in "${mathDomain}", set within the requested topic/setting above
-- Give the reader all numbers needed to solve it
+- Embed math for ${mathCount||2} separate problems, set within the requested topic/setting above
+- Skill: ${mathSkillFor(profile,mathDomain)} — at ${profile.mathGrade||profile.grade} grade standard, difficulty about grade ${mathLevel.toFixed(1)}
+- Problem 1 is a solid grade-level problem. Problem 2 is harder: two or more steps. Neither may be simple one-step arithmetic below grade level
+- Give the reader all numbers needed to solve them
 - DO NOT solve it, show the steps, or reveal the answer anywhere in the story
 - A character may notice or face the problem — they must NOT work through it or say the answer
 
@@ -810,7 +860,7 @@ Start the story immediately — no title headers, no preamble.`;
 function buildContinuationPrompt({firstPart,choice,profile,readingLevel,mathLevel,mathDomain,lifeLesson,wordLength}){
   return `Continue this Choose-Your-Path story for ${profile.name}, age ${profile.age}.
 ${readingSpec(readingLevel,profile)}
-Math domain: ${mathDomain} at level ${mathLevel.toFixed(1)} — DO NOT solve or reveal the math answer.
+Math: ${mathSkillFor(profile,mathDomain)} (grade ${mathLevel.toFixed(1)}) — DO NOT solve or reveal the math answer.
 Life lesson: "${lifeLesson}" through actions only.
 
 First part (do not repeat):
@@ -870,10 +920,12 @@ TWO-PART QUESTIONS (evidence — like Ohio's state test):
 ✓ Each two-part question counts as 2 of the ${n} items
 
 MATH QUESTIONS (exactly ${nm}, type "math"):
-   - Ask ${profile.name} to calculate the answer himself
-   - Each must use different numbers from the story
-   - Example: "What is the total if [story numbers]? Calculate it."
+   - Skill: ${mathSkillFor(profile,mathDomain)} — ${profile.mathGrade||profile.grade} grade standard
+   - Ask ${profile.name} to calculate the answer himself; each uses different numbers from the story
+   - First math question: grade-level ("difficulty":"core"). ${nm>1?'Last math question: two or more steps ("difficulty":"stretch").':''} Never trivial one-step arithmetic below grade level
+   - The answer must be ONE number (integer, decimal, fraction like 3/4, mixed number like 2 1/2, or negative). Put it in "answer_value" as a string, e.g. "-2.5" or "3/4"
    - full_answer must show the calculation steps and final number
+   - hint3: a worked example of the SAME method using DIFFERENT numbers — never the answer or part of it
 ${nf>0?`
 FACT QUESTIONS (exactly ${nf}, type "fact"):
    - Ask directly about one of the real-world facts you list in fact_bullets below — something stated plainly in the story, not requiring outside knowledge
@@ -890,7 +942,7 @@ HINTS:
           Example: "Look at the part where Marco reads Mrs. Patel's note in the garden shed"
           NOT: "reread the middle section"
    hint2: Ask a focused yes/no or fill-in question about that exact moment — still no answer
-   hint3_partial: First half of the answer, cut mid-sentence
+   hint3_partial: (non-math only) First half of the answer, cut mid-sentence
 
 MULTIPLE CHOICE (non-math questions ONLY):
    For every "general", "lesson", and "fact" question, add a "choices" array with exactly 4 options and a "correct_choice" field:
@@ -908,7 +960,7 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
     non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."} /* part_b ONLY on two-part questions */,"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
-    math:      {"q":"...","type":"math","skill":"math","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."}
+    math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"worked example with different numbers","full_answer":"..."}
   ]
 }
 
@@ -974,7 +1026,8 @@ function renderSetup(){const key=loadApiKey();return`<div class="card" style="ma
 
 function renderHome(){
   const p=S.activeProfile,st=S.persistedState,today=new Date();
-  const format=getFormatForDate(today),domain=p.mathDomains[st.mathDomainIndex%p.mathDomains.length];
+  const _ad=st.customMathDomains&&st.customMathDomains.length?st.customMathDomains:p.mathDomains,_ct=st.mathClassTopic||p.defaultClassTopic;
+  const format=getFormatForDate(today),domain=_ct&&st.mathDomainIndex%2===0?'Class topic':_ad[st.mathDomainIndex%_ad.length];
   const todayStr=today.toDateString(),sessToday=st.lastSessionDate===todayStr?(st.sessionsCompletedToday||0):0;
   const storeItems=STORE[p.id]||[],packs=storeItems.filter(i=>i.type==='setting_pack'&&(st.unlockedItems||[]).includes(i.id));
   const anns=S.levelAnnouncements||[],bbs=S.newBadges||[];
@@ -1094,7 +1147,7 @@ function renderQuestions(){
 
         ${hl>=1&&!showFull?`<div class="hint-box mt10"><strong>Hint 1:</strong> ${eh(q.hint1)}</div>`:''}
         ${hl>=2&&!showFull?`<div class="hint-box mt10"><strong>Hint 2:</strong> ${eh(q.hint2)}</div>`:''}
-        ${hl>=3&&!showFull?`<div class="hint-box mt10"><strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em></div>`:''}
+        ${hl>=3&&!showFull?`<div class="hint-box mt10">${q.hint3?`<strong>Hint 3 (worked example):</strong> ${eh(q.hint3)}<br><em class="text-muted text-sm">Now do the same steps with the numbers from the story.</em>`:`<strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em>`}</div>`:''}
         ${showFull?`<div class="answer-box mt10"><strong>Full answer:</strong> ${eh(q.full_answer)}</div>`:''}
 
         ${S.gradingError?`<div class="error-box mt10">${eh(S.gradingError)} <button class="btn btn-secondary mt8" style="padding:5px 12px;font-size:.82rem;" id="retryGradeBtn">Retry</button></div>`:''}
@@ -1161,7 +1214,7 @@ function renderParentReview(){
   const numQ=S.numQ||p.numQuestions;
   const bd=sessionBreakdown(S.questions,S.answers,p);
   const{announcements,meta:pm}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},bd,p.name,p);
-  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math: ${bd.mC}/${bd.mT}. Levels move on first-try accuracy over the last ${LEVEL_WINDOW} sessions, not this score.${pm.readingAtCap?' <b>Reading is at its cap ('+(st.readingCap??p.readingCap)+') — ready for more.</b>':''}</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
+  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math without hints: ${bd.mC}/${bd.mT}. Levels move on first-try accuracy over the last ${LEVEL_WINDOW} sessions, not this score.${pm.readingAtCap?' <b>Reading is at its cap ('+(st.readingCap??p.readingCap)+') — ready for more.</b>':''}</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
 }
 
 // ─── Rewards ──────────────────────────────────────────────────────────────────
@@ -1461,13 +1514,14 @@ function handleFactPick(idx){
 async function startSession(topicInput,isContinuation){
   const p=S.activeProfile,st=S.persistedState,today=new Date();
   const activeDomains=st.customMathDomains&&st.customMathDomains.length?st.customMathDomains:p.mathDomains;
-  const format=getFormatForDate(today),domain=activeDomains[st.mathDomainIndex%activeDomains.length],lesson=LIFE_LESSONS[st.lifeLessonIndex%LIFE_LESSONS.length];
+  const classTopic=st.mathClassTopic||p.defaultClassTopic;
+  const format=getFormatForDate(today),domain=classTopic&&st.mathDomainIndex%2===0?`Class topic: ${classTopic}`:activeDomains[st.mathDomainIndex%activeDomains.length],lesson=LIFE_LESSONS[st.lifeLessonIndex%LIFE_LESSONS.length];
   const wordLength=st.storyWordLength||p.defaultStoryWords;
   const topicFinal=isContinuation&&st.lastStorySummary?`Continue the previous story. Summary: ${st.lastStorySummary}`:topicInput;
   const numQ=st.numQuestions||p.numQuestions;
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
   try{
-    const story=await callClaude([{role:'user',content:buildStoryPrompt({format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3})}],'You are a skilled children\'s fiction writer.',3000);
+    const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3})}],'You are a skilled children\'s fiction writer.',3000);
     if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story});
     else setState({screen:'story-detective',fullStory:story});
   }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
@@ -1555,7 +1609,8 @@ async function handleSubmitAnswer(){
   // After hint 3, they can still submit and get credit
   setState({gradingLoading:true,gradingError:null});
   try{
-    const correct=await gradeAnswer(q.q,answer,q.acceptable_variants||[q.full_answer],q.full_answer,q.type==='math');
+    if(q.type==='math'&&!parseNumbers(answer).length){setState({gradingLoading:false,gradingError:'Type your answer as a number (like 12, 3.5, 3/4 or -2).'});return;}
+    const correct=await gradeAnswer(q.q,answer,q.acceptable_variants||[q.full_answer],q.full_answer,q.type==='math',q);
     setState({gradingLoading:false});
     if(correct){
       const pts=questionPoints(q,true,hl);
