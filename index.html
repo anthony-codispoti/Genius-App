@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-24c';
+const APP_VERSION='v2026-10-24d';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -1297,7 +1297,7 @@ function renderWrapup(){
     return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">Q${i+1}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
   }).join('');
   const hasReal=S.factBullets&&S.factBullets.length>0;
-  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button><br><button class="btn btn-secondary mt8" id="goParentReviewBtn">Parent review →</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
+  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
 }
 
 // ─── Parent Review ────────────────────────────────────────────────────────────
@@ -1456,7 +1456,7 @@ function renderFactReveal(){
   </div>
   <div class="card">
     <div class="flip-cards">${cards}</div>
-    <button class="btn btn-primary btn-full mt8" id="goParentReviewBtn">Parent review →</button>
+    <button class="btn btn-primary btn-full mt8" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button>
   </div>`;
 }
 
