@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-22e';
+const APP_VERSION='v2026-10-24a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -464,6 +464,7 @@ function applyRemoteIfStillNewer(p,remote){
   }catch{}
   applyRemoteState(p,remote);
   S.persistedState=calibrate(p,remote);
+  if(S.persistedState!==remote)saveState(p,S.persistedState); // persist a reset right away
   if(remote.activeTheme)applyTheme(remote.activeTheme);
   render();
   return true;
@@ -1529,6 +1530,7 @@ async function startSession(topicInput,isContinuation){
   const wordLength=st.storyWordLength||p.defaultStoryWords;
   const topicFinal=isContinuation&&st.lastStorySummary?`Continue the previous story. Summary: ${st.lastStorySummary}`:topicInput;
   const numQ=st.numQuestions||p.numQuestions;
+  S.resumedDraft=false;
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3})}],'You are a skilled children\'s fiction writer.',3000);
@@ -1557,14 +1559,17 @@ async function handleReadyForQuestions(){
     // Clamp in case numQuestions was later lowered below a combo saved earlier — always leave room for the mandatory lesson question.
     const numFactQ=Math.min(st.numFactQuestions||0,Math.max(numQ-numMathQ-1,0));
     const factCount=st.factIntensity||3;
-    const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount})}],'You are a reading comprehension teacher. Return only valid JSON — no comments, no trailing commas.',8000);
-    let parsed,qs,factBullets=[],factTopic='';
-    parsed=parseJsonLoose(raw);
-    if(!parsed)throw new Error('Could not parse questions. Please retry.');
-    if(Array.isArray(parsed)){qs=parsed;}
-    else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
-    qs=expandTwoPart(qs);
-    const items=[];for(const g of qs){if(items.length+g.length>numQ)break;items.push(...g);}
+    let items=[],factBullets=[],factTopic='';
+    for(let attempt=0;attempt<2;attempt++){
+      const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount})}],'You are a reading comprehension teacher. Return only valid JSON — no comments, no trailing commas.',8000);
+      const parsed=parseJsonLoose(raw);
+      if(!parsed){if(attempt===0)continue;throw new Error('Could not parse questions. Please retry.');}
+      let qs;
+      if(Array.isArray(parsed)){qs=parsed;}
+      else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
+      items=assembleItems(expandTwoPart(qs),numQ,numMathQ);
+      if(items.filter(q=>q.type==='math').length>=numMathQ)break; // otherwise ask once more
+    }
     if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
     setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
@@ -1579,6 +1584,25 @@ function parseJsonLoose(raw){
   if(a<0||b<=a)return null;
   t=t.slice(a,b+1).replace(/\/\*[\s\S]*?\*\//g,'').replace(/,(\s*[}\]])/g,'$1');
   try{return JSON.parse(t);}catch{return null;}
+}
+// Fit the AI's questions to the session size. Math always comes last, so a
+// plain trim used to cut the math whenever the AI wrote extra reading
+// questions. Reserve the math first, then drop extra general questions
+// (never the lesson or fact questions) until it fits.
+function assembleItems(groups,numQ,numMathQ){
+  const isMath=g=>g[0].type==='math';
+  const math=groups.filter(isMath).slice(0,numMathQ);
+  let rest=groups.filter(g=>!isMath(g));
+  const count=gs=>gs.reduce((n,g)=>n+g.length,0);
+  const room=numQ-count(math);
+  while(count(rest)>room){
+    const pick=ok=>{for(let j=rest.length-1;j>=0;j--)if(ok(rest[j]))return j;return-1;};
+    let i=pick(g=>g[0].type==='general'&&g.length===1);   // single general first
+    if(i<0)i=pick(g=>g[0].type==='general');              // then a two-part general
+    if(i<0)i=rest.length-1;
+    rest.splice(i,1);
+  }
+  return[...rest.flat(),...math.flat()];
 }
 // A two-part question becomes two items: Part A (the answer) then Part B
 // (which sentence proves it). Returns groups so A and B are never split.
@@ -1595,6 +1619,7 @@ function expandTwoPart(qs){
 function handleChoiceSelect(letter){
   const q=(S.questions||[])[S.currentQ];
   if(!q||S.correctFeedback)return;
+  markTap();
   if(letter===q.correct_choice){
     // Only a first-pick answer counts as correct. After a miss they still have
     // to find the right answer (good practice), but it scores as missed.
@@ -1627,6 +1652,7 @@ async function handleSubmitAnswer(){
   const answer=val('answerInput').trim();
   if(!answer)return;
   const qs=S.questions,qi=S.currentQ,q=qs[qi],hl=S.hintLevel||0;
+  markTap();
 
   // After hint 3, they can still submit and get credit
   setState({gradingLoading:true,gradingError:null});
@@ -1654,14 +1680,23 @@ async function handleSubmitAnswer(){
   }catch(err){setState({gradingLoading:false,gradingError:`Grading error: ${err.message}`});}
 }
 
+// Effort timing: when the child first and last tapped/submitted on this question.
+function markTap(){const now=Date.now();if(!S.qFirstTapAt)S.qFirstTapAt=now;S.qLastTapAt=now;}
+document.addEventListener('visibilitychange',()=>{
+  if(S.screen!=='questions'||!S.qStartedAt)return;
+  if(document.hidden)S.qHiddenAt=Date.now();
+  else if(S.qHiddenAt){S.qHiddenMs=(S.qHiddenMs||0)+(Date.now()-S.qHiddenAt);S.qHiddenAt=null;}
+});
 function finalizeQuestion(correct,userAnswer,overridePts){
   const hl=S.hintLevel||0,pts=overridePts!==undefined?overridePts:questionPoints((S.questions||[])[S.currentQ],correct,hl);
   const q0=(S.questions||[])[S.currentQ]||{};
-  const secs=S.qStartedAt?Math.round((Date.now()-S.qStartedAt)/1000):null;
+  const t0=S.qStartedAt,toS=t=>t0&&t?Math.round((t-t0)/100)/10:null;
+  const secs=toS(S.qLastTapAt||Date.now()),firstSecs=toS(S.qFirstTapAt),awaySecs=S.qHiddenMs?Math.round(S.qHiddenMs/1000):0;
   const tries=Math.max((S.wrongChoices||[]).length,(S.wrongAttempts||[]).length)+(userAnswer?1:0);
-  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null,secs,tries}];
+  const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null,secs,firstSecs,awaySecs,tries}];
   const newScore=S.score+(correct?1:0);
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
+  S.qFirstTapAt=null;S.qLastTapAt=null;S.qHiddenMs=0;S.qHiddenAt=null;
   if(isLast)setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
   else setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
 }
@@ -1804,11 +1839,11 @@ async function handleConfirmSave(){
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
     v:2,...bd,readingAtCap:meta.readingAtCap,
-    storySeconds:S.storySeconds??null,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
+    storySeconds:S.storySeconds??null,resumed:!!S.resumedDraft,timing:2,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,tries:a.tries??null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
@@ -1942,12 +1977,13 @@ window.addEventListener('pageshow',()=>{checkForUpdate();});
   if(key){
     const p=loadActiveChild();
     // Load from localStorage immediately so screen appears fast
-    let st=loadState(p);
+    let st=calibrate(p,loadState(p));
     S.activeProfile=p;S.persistedState=st;S.screen='home';
     const draft=loadDraft(p);
     if(draft&&RESUMABLE_SCREENS.has(draft.screen)){
       Object.assign(S,draft);
       S.error=null;
+      S.resumedDraft=true;
     }
     if(st.activeTheme)applyTheme(st.activeTheme);
     render();

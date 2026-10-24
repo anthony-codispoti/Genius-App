@@ -57,6 +57,26 @@ for cid, (name, focus) in KIDS.items():
             print(f"Answers missed in under ~5 seconds: {len(rushed)} of {len(qs)} questions")
             if len(rushed) >= 3:
                 print("FLAG: several quick wrong answers -> possible rushing/guessing")
+        # Answer-choice checks (sessions saved after Oct 24 keep the choices and true tap timing)
+        mc = [q for h in v2 if h.get("timing") == 2 for q in h.get("questions", []) if q.get("choices") and q.get("correctChoice")]
+        if mc:
+            def longest(q):
+                lens = [len(c) for c in q["choices"]]
+                return lens.index(max(lens)) == "ABCD".index(q["correctChoice"])
+            lr = sum(longest(q) for q in mc)
+            print(f"Correct answer was the longest choice: {pct(lr, len(mc))} (about 25% expected if lengths give nothing away)")
+            if len(mc) >= 8 and lr / len(mc) > 0.45:
+                print("FLAG: correct answers are often the longest choice -> guessable without reading")
+            letters = collections.Counter(q["correctChoice"] for q in mc)
+            print("Correct-letter spread:", dict(sorted(letters.items())))
+            fast = [q for q in mc if q.get("firstSecs") is not None and q["firstSecs"] < 5 and q.get("correct")]
+            print(f"Right on first tap in under 5 seconds: {len(fast)} of {len(mc)}")
+            away = sum(q.get("awaySecs", 0) for q in mc)
+            if away:
+                print(f"Time the app was in the background during questions: {away}s")
+        resumed = [h["date"] for h in v2 if h.get("resumed")]
+        if resumed:
+            print(f"Sessions resumed after a refresh: {', '.join(resumed)}")
         mq = [q for h in v2 for q in h.get("questions", []) if q["type"] == "math"]
         if mq:
             print(f"Math: {sum(q['correct'] and not q.get('hintsUsed') for q in mq)}/{len(mq)} without hints, gave up (showed answer) on {sum(not q['correct'] for q in mq)}")
