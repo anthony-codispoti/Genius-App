@@ -183,8 +183,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,readingFloor:3.0,readingCap:5.0,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-24b';
+const APP_VERSION='v2026-10-24c';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -477,6 +477,16 @@ async function pushToSupabase(childId,state){
   });
   if(!r.ok)throw new Error(`Supabase ${r.status}`);
 }
+// True if this device has finished sessions the cloud copy doesn't. Then the
+// local copy must stay the base (with the cloud's settings layered on), even
+// if the cloud copy's timestamp is newer — otherwise those sessions vanish.
+function hasUnsyncedSessions(local,remote){
+  if(!local||!remote)return false;
+  const key=h=>`${h.date}|${h.score}|${h.pointsEarned}|${h.storyWords||''}`;
+  const have=new Set((remote.sessionHistory||[]).map(key));
+  const remoteLast=(remote.sessionHistory||[]).slice(-1)[0];
+  return (local.sessionHistory||[]).some(h=>!have.has(key(h))&&(!remoteLast||new Date(h.date)>=new Date(remoteLast.date)));
+}
 async function pullFromSupabase(p){
   try{
     const localRaw=localStorage.getItem(p.storageKey);
@@ -490,7 +500,7 @@ async function pullFromSupabase(p){
     if(!data||!data[0])return null;
     const remote=data[0].state;
     const remoteTime=remote._savedAt||0;
-    if(remoteTime<=localTime){
+    if(remoteTime<=localTime||hasUnsyncedSessions(local,remote)){
       // Local's WHOLE-STATE timestamp is newer, but that only proves this
       // device's GAMEPLAY progress is newer — not its SETTINGS. A parent's
       // settings change made on another device can carry an older timestamp
@@ -1241,11 +1251,12 @@ function renderQuestions(){
             <div class="celebrate-sub">${qi+1<total?'Moving to next question…':'Almost done…'}</div>
           </div>
         `:q.choices&&q.type!=='math'?`
-          <div class="choices-grid mt12">
+          ${choicesLocked()?`<div class="text-center text-muted text-sm mt12">📖 Read the question and every choice… choices unlock in a moment</div>`:''}
+          <div class="choices-grid mt12"${choicesLocked()?' style="opacity:.55;"':''}>
             ${(q.choices||[]).map((c,ci)=>{
               const letter=c.charAt(0);
               const isWrong=(S.wrongChoices||[]).includes(letter);
-              return`<button class="choice-btn${isWrong?' choice-wrong':''}" id="choiceBtn_${letter}" data-letter="${letter}" ${isWrong?'disabled':''}>${eh(c)}</button>`;
+              return`<button class="choice-btn${isWrong?' choice-wrong':''}" id="choiceBtn_${letter}" data-letter="${letter}" ${isWrong||choicesLocked()?'disabled':''}>${eh(c)}</button>`;
             }).join('')}
           </div>
           ${wrongAttempts.length>0?`<div class="mt10 text-center"><button class="parent-override-btn" id="parentOverrideBtn">Parent: mark correct</button></div>`:''}
@@ -1286,19 +1297,19 @@ function renderWrapup(){
     return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">Q${i+1}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
   }).join('');
   const hasReal=S.factBullets&&S.factBullets.length>0;
-  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goParentReviewBtn">Parent review →</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
+  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button><br><button class="btn btn-secondary mt8" id="goParentReviewBtn">Parent review →</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
 }
 
 // ─── Parent Review ────────────────────────────────────────────────────────────
 function renderParentReview(){
-  const st=S.persistedState,p=S.activeProfile;
+  const st=S.preSaveState||S.persistedState,p=S.activeProfile;
   const rs=S.reviewScore!==null?S.reviewScore:S.score;
   const rrl=S.reviewReadingLevel!==null?S.reviewReadingLevel:st.readingLevel;
   const rml=S.reviewMathLevel!==null?S.reviewMathLevel:st.mathLevel;
   const numQ=S.numQ||p.numQuestions;
   const bd=sessionBreakdown(S.questions,S.answers,p);
   const{announcements,meta:pm}=computeLevelChanges({...st,readingLevel:rrl,mathLevel:rml},bd,p.name,p);
-  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">Adjust if needed. Nothing saves until you confirm.</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math without hints: ${bd.mC}/${bd.mT}. Levels move on first-try accuracy over the last ${LEVEL_WINDOW} sessions, not this score.${pm.readingAtCap?' <b>Reading is at its cap ('+(st.readingCap??p.readingCap)+') — ready for more.</b>':''}</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
+  return`<div class="card" style="max-width:500px;margin:0 auto;"><h2 class="mb4">Parent Review — ${eh(p.name)}</h2><p class="text-muted mb16" style="font-size:.88rem;">${S.sessionSaved?'✓ This session is already saved. Change anything below and confirm to update it.':'Adjust if needed. Nothing saves until you confirm.'}</p><div class="pr-field"><label>Session score</label><input type="number" id="reviewScoreInput" min="0" max="${numQ}" step="1" value="${rs}"><span class="text-muted text-sm">/ ${numQ}</span></div><div class="pr-field"><label>Reading level (current: ${st.readingLevel.toFixed(1)})</label><input type="number" id="reviewReadingInput" min="1.0" max="12.0" step="0.1" value="${rrl.toFixed(1)}"></div><div class="pr-field"><label>Math level (current: ${st.mathLevel.toFixed(1)})</label><input type="number" id="reviewMathInput" min="1.0" max="12.0" step="0.1" value="${rml.toFixed(1)}"></div><p class="text-xs text-muted mt8">Reading first-try: ${bd.rC}/${bd.rT} · Math without hints: ${bd.mC}/${bd.mT}. Levels move on first-try accuracy over the last ${LEVEL_WINDOW} sessions, not this score.${pm.readingAtCap?' <b>Reading is at its cap ('+(st.readingCap??p.readingCap)+') — ready for more.</b>':''}</p><hr class="divider">${announcements.length>0?announcements.map(a=>`<div class="level-announce">${eh(a)}</div>`).join(''):'<p class="text-muted text-sm">No level changes this session.</p>'}${S.error?`<div class="error-box mt10">${eh(S.error)}</div>`:''}<div class="row mt16"><button class="btn btn-success btn-lg" id="confirmSaveBtn">✓ Confirm & Save</button><button class="btn btn-secondary" id="cancelReviewBtn">← Back</button></div></div>`;
 }
 
 // ─── Rewards ──────────────────────────────────────────────────────────────────
@@ -1496,18 +1507,19 @@ function bindEvents(){
   on('retryGradeBtn','click',handleSubmitAnswer);
   on('clarifyToggle','click',()=>setState({clarifyVisible:!S.clarifyVisible,clarifyResponse:null,clarifyText:''}));
   on('submitClarifyBtn','click',handleClarify);
-  on('goParentReviewBtn','click',()=>setState({screen:'parent-review',reviewScore:S.score,reviewReadingLevel:S.persistedState.readingLevel,reviewMathLevel:S.persistedState.mathLevel,error:null}));
+  on('goParentReviewBtn','click',()=>setState({screen:'parent-review',reviewScore:S.score,reviewReadingLevel:(S.preSaveState||S.persistedState).readingLevel,reviewMathLevel:(S.preSaveState||S.persistedState).mathLevel,error:null}));
   on('reviewScoreInput','input',(e)=>setState({reviewScore:parseInt(e.target.value,10)||0}));
   on('reviewReadingInput','input',(e)=>setState({reviewReadingLevel:parseFloat(e.target.value)||S.persistedState.readingLevel}));
   on('reviewMathInput','input',(e)=>setState({reviewMathLevel:parseFloat(e.target.value)||S.persistedState.mathLevel}));
   on('confirmSaveBtn','click',handleConfirmSave);
   on('cancelReviewBtn','click',()=>setState({screen:'wrapup'}));
+  on('goHomeDoneBtn','click',()=>{if(S.sessionSaved)setState({screen:'home'});});
   on('saveApiKeyBtn','click',()=>{const k=val('apiKeyInput').trim();if(k){saveApiKey(k);setState({error:null});}else{setState({error:'Please enter a valid API key.'});}});
   on('saveWordLengthBtn','click',handleSaveWordLength);
   on('saveNumQBtn','click',handleSaveNumQ);
   on('saveMathDomainsBtn','click',handleSaveMathDomains);
   on('parentOverrideBtn','click',handleParentOverride);
-  on('seeRealBtn','click',()=>{const st=S.persistedState;const ns={...st,factRevealCount:(st.factRevealCount||0)+1};S.persistedState=ns;saveState(S.activeProfile,ns);setState({screen:'fact-reveal'});});
+  on('seeRealBtn','click',()=>{const st=S.persistedState;const ns={...st,factRevealCount:(st.factRevealCount||0)+1};if(S.preSaveState)S.preSaveState={...S.preSaveState,factRevealCount:(S.preSaveState.factRevealCount||0)+1};S.persistedState=ns;saveState(S.activeProfile,ns);setState({screen:'fact-reveal'});});
   on('saveFactFreeformBtn','click',handleSaveFactFreeform);
   on('clearFactFreeformBtn','click',handleClearFactFreeform);
   on('saveFactDomainsBtn','click',handleSaveFactDomains);
@@ -1604,7 +1616,7 @@ async function startSession(topicInput,isContinuation){
   const topicFinal=isContinuation&&st.lastStorySummary?`Continue the previous story. Summary: ${st.lastStorySummary}`:topicInput;
   const numQ=st.numQuestions||p.numQuestions;
   const targets=chooseTargets(p,st,numQ);
-  S.resumedDraft=false;
+  S.resumedDraft=false;S.preSaveState=null;S.sessionSaved=false;
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ,targets});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3,targets})}],'You are a skilled children\'s fiction writer.',3000);
@@ -1646,6 +1658,7 @@ async function handleReadyForQuestions(){
     }
     items=items.map(shuffleChoices);
     if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
+    startChoicePause(items[0]);
     setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
 }
@@ -1699,9 +1712,23 @@ function expandTwoPart(qs){
   });
 }
 
+// Minimum reading time before answer choices unlock: scales with how much
+// there is to read (question + all choices), 3-10 seconds.
+function readPauseMs(q,p){
+  if(!q||!Array.isArray(q.choices)||q.type==='math')return 0;
+  const words=[q.q,...q.choices].join(' ').split(/\s+/).filter(Boolean).length;
+  const per=(p&&p.readPauseSecPerWord)||0.12;
+  return Math.round(Math.min(10,Math.max(3,words*per))*1000);
+}
+function choicesLocked(){return !!S.choicesAt&&Date.now()<S.choicesAt;}
+function startChoicePause(q){
+  const ms=readPauseMs(q,S.activeProfile);
+  S.choicesAt=ms?Date.now()+ms:null;
+  if(ms)setTimeout(()=>{if(S.screen==='questions')render();},ms+30);
+}
 function handleChoiceSelect(letter){
   const q=(S.questions||[])[S.currentQ];
-  if(!q||S.correctFeedback)return;
+  if(!q||S.correctFeedback||choicesLocked())return;
   markTap();
   if(letter===q.correct_choice){
     // Only a first-pick answer counts as correct. After a miss they still have
@@ -1780,8 +1807,9 @@ function finalizeQuestion(correct,userAnswer,overridePts){
   const newScore=S.score+(correct?1:0);
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
   S.qFirstTapAt=null;S.qLastTapAt=null;S.qHiddenMs=0;S.qHiddenAt=null;
-  if(isLast)setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});
-  else setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
+  if(isLast){setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});handleConfirmSave({auto:true});}
+  else{startChoicePause((S.questions||[])[nextQ]);}
+  if(!isLast)setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
 }
 function spawnTrail(particles){
   for(let i=0;i<10;i++){
@@ -1860,9 +1888,15 @@ async function handleClarify(){
 }
 
 // ─── Confirm Save — save FIRST, then update summary in background ──────────────
-async function handleConfirmSave(){
+// Saves the session. Runs automatically when the last question is answered
+// (sessions used to be lost if nobody tapped Parent review → Confirm). If a
+// parent then confirms changes in Parent Review, it re-saves from the state
+// as it was BEFORE this session, so nothing is counted twice.
+async function handleConfirmSave(opts){
+  const auto=!!(opts&&opts.auto);
   const p=S.activeProfile;
-  let st=S.persistedState;
+  if(!S.preSaveState)S.preSaveState=S.persistedState;
+  let st=S.preSaveState;
   // Re-sync just the parent-controlled settings fields against the freshest
   // known copy before writing this session's progress back. Finishing a
   // session saves the WHOLE state blob — if this device's in-memory copy is
@@ -1953,7 +1987,8 @@ async function handleConfirmSave(){
   // *** SAVE IMMEDIATELY — before any async operations ***
   const stamped={...newState,_savedAt:Date.now()};
   try{localStorage.setItem(p.storageKey,JSON.stringify(stamped));}catch(e){console.error('Save failed',e);}
-  setState({persistedState:stamped,screen:'home',levelAnnouncements:announcements,newBadges:newBadgeIds,error:null,syncStatus:'saving'});
+  if(auto){S.persistedState=stamped;S.levelAnnouncements=announcements;S.newBadges=newBadgeIds;S.sessionSaved=true;S.syncStatus='saving';render();}
+  else setState({persistedState:stamped,screen:'home',levelAnnouncements:announcements,newBadges:newBadgeIds,error:null,syncStatus:'saving'});
 
   // Push to Supabase and surface the result so parent can see if it failed
   pushToSupabase(p.id,stamped)
@@ -1963,6 +1998,7 @@ async function handleConfirmSave(){
   // Update story summary in background — won't block anything
   callClaude([{role:'user',content:buildSummaryPrompt(S.fullStory||'')}],'You write brief story summaries.',300)
     .then(summary=>{
+      if(S.persistedState!==stamped)return; // re-saved since (parent review) — that save writes its own summary
       const updated={...stamped,lastStorySummary:summary};
       saveState(p,updated);
       S.persistedState=updated; // update in memory without re-render
