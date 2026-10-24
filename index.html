@@ -184,7 +184,7 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
   gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme']},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,readingFloor:3.0,readingCap:5.0,readingFocus:['compare_contrast','theme','integration','vocab_context']},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,readingFloor:3.0,readingCap:5.0,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +377,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-24a';
+const APP_VERSION='v2026-10-24b';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -425,7 +425,7 @@ const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQues
 // on a screen worth resuming, so a refresh (or a crash that forces one) can
 // put the reader right back where they were instead of discarding everything.
 const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
-const DRAFT_FIELDS=['storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic'];
+const DRAFT_FIELDS=['targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic'];
 function draftKey(p){return p.storageKey+'_draft';}
 function saveDraft(){
   if(!S.activeProfile)return;
@@ -601,7 +601,77 @@ const READING_SKILLS={
   text_complexity:'Hardest passage (the most complex sentences/ideas in the text)',
   key_details:'Key details that support a bigger idea',
   evidence:'Citing text evidence (Part B: which sentence proves it)',
+  figurative:'Similes & metaphors (what the comparison means)',
+  setting:'Setting and how it shapes the story',
+  plot_events:'How plot events build on one another',
+  point_of_view:'Compare narrative points of view (first vs. third person)',
+  cause_effect:'Cause & effect relationships',
+  info_explicit:'What the informational text directly says',
+  info_structure:'How the informational text is organized (sequence, cause/effect, problem/solution, compare/contrast, description)',
+  fact_opinion:'Fact vs. opinion',
+  text_types:'Traits of different kinds of informational text (news article, how-to, encyclopedia, placard…)',
 };
+// What the story must contain so each focus skill can actually be tested.
+const INFO_STRUCTURES=['sequence (time order) with signal words like first, next, then, finally','cause and effect with signal words like because, so, as a result','problem and solution with signal words like the problem is, one solution, to fix this','compare and contrast with signal words like both, unlike, however, similarly','description of one topic broken into clearly labeled parts'];
+const INFO_TYPES=['news article (headline, dateline, who/what/when/where/why, a quote)','how-to / instruction sheet (title, materials list, numbered steps)','encyclopedia entry (title, subheadings, bold key terms, a caption for an imagined picture)','museum placard (title, short sections, a "Did you know?" box)','brochure or advertisement (catchy headline, bullet points, persuasive lines)','biography excerpt (a real person\'s life in time order, dates)'];
+function skillSetup(key,i){
+  return{
+    figurative:'Include at least 3 clear similes or metaphors a young reader can explain (at least one of each), e.g. "the cave was a hungry mouth". Make at least one matter to the meaning of the scene.',
+    setting:'Make the SETTING shape the plot: the place, time or weather must create a problem or change what characters decide — not just scenery.',
+    plot_events:'Build the plot as a clear chain of at least 3 events where each one happens BECAUSE of the one before it.',
+    point_of_view:'Narrate the story in THIRD person. Write the in-story document as a FIRST-PERSON account (a journal entry, letter, field notes or eyewitness report using "I") about the same topic or events, still full of real facts — so the reader can compare the two points of view.',
+    cause_effect:'Include at least 2 clear cause-and-effect relationships (one thing directly causes another) that a reader can explain.',
+    info_explicit:'In the in-story document, state its key facts plainly in single sentences so the reader can find and restate them.',
+    info_structure:`Organize the in-story document using this STRUCTURE: ${INFO_STRUCTURES[i%INFO_STRUCTURES.length]}.`,
+    fact_opinion:'The in-story document must mix FACTS with at least 2 clear OPINION statements (e.g. a quoted person\'s view, "the best…", "I think…", "everyone should…") so the reader can tell which is which.',
+    text_types:`Make the in-story document this TYPE, with its typical features: ${INFO_TYPES[i%INFO_TYPES.length]}.`,
+  }[key]||'';
+}
+// Pick this session's target skills: weakest and least-recently-practiced first.
+function skillStats(st){
+  const out={},hist=st.sessionHistory||[];
+  hist.forEach((h,hi)=>(h.questions||[]).forEach(q=>{
+    [q.skill,q.also].filter(Boolean).forEach(k=>{const o=out[k]||(out[k]={c:0,t:0,last:-99});o.t++;if(q.correct)o.c++;o.last=hi;});
+  }));
+  return{out,n:hist.length};
+}
+function pickSkills(keys,count,st){
+  if(!keys||!keys.length||count<=0)return[];
+  const{out,n}=skillStats(st);
+  const scored=keys.map(k=>{const o=out[k]||{c:0,t:0,last:-99};
+    const miss=1-(o.c+1)/(o.t+2);                 // weakness (smoothed)
+    const gap=Math.min(n-1-o.last,6)/6;            // sessions since last practiced
+    return{k,score:miss+0.6*gap+Math.random()*0.15};});
+  return scored.sort((a,b)=>b.score-a.score).slice(0,count).map(x=>x.k);
+}
+function storyQuestionSlots(numQ,numMathQ,numFactQ){
+  const lessonTwoPart=(numQ-numMathQ-numFactQ)>=2;
+  const nGeneral=Math.max(numQ-numMathQ-numFactQ-(lessonTwoPart?2:1),0);
+  const genTwoPart=nGeneral>=4?2:nGeneral>=2?1:0;
+  return{lessonTwoPart,nGeneral,genTwoPart,genSingles:nGeneral-2*genTwoPart,genObjects:genTwoPart+(nGeneral-2*genTwoPart)};
+}
+function chooseTargets(p,st,numQ){
+  if(!p.storyFocus)return null;
+  const nm=st.numMathQuestions||1,nf=Math.min(st.numFactQuestions||0,Math.max(numQ-nm-1,0));
+  const slots=storyQuestionSlots(numQ,nm,nf);
+  const seed=(st.sessionHistory||[]).length;
+  return{story:pickSkills(p.storyFocus,slots.genObjects,st),info:pickSkills(p.infoFocus,nf,st),seed};
+}
+function targetSetupText(t){
+  if(!t)return'';
+  const lines=[...t.story,...t.info].map(k=>skillSetup(k,t.seed)).filter(Boolean);
+  return lines.length?`\nSKILL SETUP — REQUIRED (the questions will test these, so the text must contain them):\n${lines.map(l=>'- '+l).join('\n')}\n`:'';
+}
+// Put the correct answer in a random spot. The AI kept the right answer in
+// A or B (D was correct once in ~200 questions), which kids can learn to exploit.
+function shuffleChoices(q){
+  if(!Array.isArray(q.choices)||q.choices.length<2||!q.correct_choice)return q;
+  const strip=c=>String(c).replace(/^\s*[A-D][.)]\s*/,'');
+  const ci='ABCD'.indexOf(q.correct_choice);if(ci<0||ci>=q.choices.length)return q;
+  const order=q.choices.map((c,i)=>({t:strip(c),ok:i===ci}));
+  for(let i=order.length-1;i>0;i--){const r=new Uint32Array(1);crypto.getRandomValues(r);const j=r[0]%(i+1);[order[i],order[j]]=[order[j],order[i]];}
+  return{...q,choices:order.map((o,i)=>`${'ABCD'[i]}. ${o.t}`),correct_choice:'ABCD'[order.findIndex(o=>o.ok)]};
+}
 
 // ─── Format & Level helpers ────────────────────────────────────────────────────
 function getFormatForDate(d){const day=d.getDay();if(day===1||day===3||day===5)return'Choose-Your-Path';if(day===2||day===4||day===6)return'Detective';return getISOWeek(d)%2===0?'Choose-Your-Path':'Detective';}
@@ -817,7 +887,7 @@ Reply ONLY with: {"correct":true} or {"correct":false}`;
 }
 
 // ─── Prompts ──────────────────────────────────────────────────────────────────
-function buildStoryPrompt({mathCount,format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain,factCount}){
+function buildStoryPrompt({mathCount,format,profile,readingLevel,mathLevel,mathDomain,lifeLesson,topic,storySummary,wordLength,heroName,factDomain,factCount,targets}){
   const isCYP=format==='Choose-Your-Path';
   const part1Words=Math.round(wordLength*0.6);
   const formatInst=isCYP
@@ -861,11 +931,11 @@ LIFE LESSON: "${lifeLesson}" — shown through character ACTIONS only, never sta
 
 ${formatInst}
 ${docInst}
-
+${targetSetupText(targets)}
 Start the story immediately — no title headers, no preamble.`;
 }
 
-function buildContinuationPrompt({firstPart,choice,profile,readingLevel,mathLevel,mathDomain,lifeLesson,wordLength}){
+function buildContinuationPrompt({firstPart,choice,profile,readingLevel,mathLevel,mathDomain,lifeLesson,wordLength,targets}){
   return `Continue this Choose-Your-Path story for ${profile.name}, age ${profile.age}.
 ${readingSpec(readingLevel,profile)}
 Math: ${mathSkillFor(profile,mathDomain)} (grade ${mathLevel.toFixed(1)}) — DO NOT solve or reveal the math answer.
@@ -877,18 +947,15 @@ ${firstPart}
 ---
 Choice made: "${choice}"
 
-Write the continuation (~${Math.round(wordLength*0.4)} words). End the story satisfyingly.`;
+${targets&&targets.story.length?`Keep the skill setup going where it fits (${targets.story.map(k=>READING_SKILLS[k].split(' (')[0]).join('; ')}) — e.g. more similes/metaphors, the setting still shaping events, events still causing one another.\n`:''}Write the continuation (~${Math.round(wordLength*0.4)} words). End the story satisfyingly.`;
 }
 
-function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ,numMathQ,numFactQ,factCount}){
+function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,numQ,numMathQ,numFactQ,factCount,targets}){
   const n=numQ||profile.numQuestions;
   const nm=numMathQ||1;
   const nf=numFactQ||0;
   const fc=factCount||3;
-  const lessonTwoPart=(n-nm-nf)>=2;
-  const nGeneral=Math.max(n-nm-nf-(lessonTwoPart?2:1),0); // items left after math, fact and the lesson question
-  const genTwoPart=nGeneral>=2?1:0;
-  const genSingles=nGeneral-2*genTwoPart;
+  const{lessonTwoPart,nGeneral,genTwoPart,genSingles}=storyQuestionSlots(n,nm,nf); // items left after math, fact and the lesson question
   const nStretch=Math.max(1,Math.round((n-nm)*0.4));
   return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)} (about ${lexileFor(readingLevel)}L).
 
@@ -906,8 +973,14 @@ ${Object.entries(READING_SKILLS).map(([k,v])=>`   - ${k}: ${v}`).join('\n')}
 
 ${profile.name.toUpperCase()}'S FOCUS SKILLS (from school testing — at least ${Math.min(2,nGeneral+1)} questions must use these): ${(profile.readingFocus||['inference','theme']).join(', ')}
 
-RULES:
-✓ At least 1 question about the IN-STORY DOCUMENT (the informational text) — skill informational, integration, or compare_contrast
+${targets?`THIS SESSION'S TARGET SKILLS (his teachers' areas of focus — follow exactly):
+✓ The ${genTwoPart+genSingles} "general" question(s): one per skill, using these keys: ${targets.story.join(', ')}${genTwoPart?` (the two-part ones get these first)`:''}
+${nf>0?`✓ The ${nf} "fact" question(s): one per skill, about the IN-STORY DOCUMENT, using these keys: ${targets.info.join(', ')}. Each still checks a real fact from the document, framed through its skill (e.g. fact_opinion: "Which sentence from the article is an OPINION?"; info_structure: "How is the article organized?"; text_types: "Which feature shows this is a news article?"; info_explicit: "According to the article, …")
+`:''}✓ INFERENCE (also a teacher focus): at least 2 of these target questions must ALSO need inference — the answer is not stated; he must combine clues. Mark those with "also":"inference"
+✓ point_of_view questions compare the story's narrator with the first-person document (who is telling it, what each one knows or feels)
+✓ figurative questions quote the simile/metaphor and ask what it means or why the author used it
+`:''}RULES:
+✓ At least 1 question about the IN-STORY DOCUMENT (the informational text) — skill informational, integration, compare_contrast, or one of the info_ skills
 ✓ At least 1 inference question whose answer is NOT stated word-for-word — the child must combine clues
 ✓ At least 1 compare_contrast question when the focus list includes it
 ✓ Vocabulary questions quote the sentence and ask what the word/phrase means THERE
@@ -936,7 +1009,7 @@ MATH QUESTIONS (exactly ${nm}, type "math"):
    - hint3: a worked example of the SAME method using DIFFERENT numbers — never the answer or part of it
 ${nf>0?`
 FACT QUESTIONS (exactly ${nf}, type "fact"):
-   - Ask directly about one of the real-world facts you list in fact_bullets below — something stated plainly in the story, not requiring outside knowledge
+   - ${targets?'Use the fact-question TARGET SKILLS above, about the in-story document':'Ask directly about one of the real-world facts you list in fact_bullets below — something stated plainly in the story, not requiring outside knowledge'}
    - Do NOT quiz plot details here, only the factual/educational content
    - Gets a "choices" array + "correct_choice" just like a general question (see MULTIPLE CHOICE below)
 `:''}
@@ -967,7 +1040,7 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_topic": "The specific subtopic you chose (e.g., 'Roman aqueducts' or 'how volcanoes form')",
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
-    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference","difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."},"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
+    non-math: {"q":"...","type":"lesson|general|fact","skill":"inference",${targets?'"also":"inference (optional)",':''}"difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."},"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
     math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"worked example with different numbers","full_answer":"..."}
   ]
 }
@@ -1530,10 +1603,11 @@ async function startSession(topicInput,isContinuation){
   const wordLength=st.storyWordLength||p.defaultStoryWords;
   const topicFinal=isContinuation&&st.lastStorySummary?`Continue the previous story. Summary: ${st.lastStorySummary}`:topicInput;
   const numQ=st.numQuestions||p.numQuestions;
+  const targets=chooseTargets(p,st,numQ);
   S.resumedDraft=false;
-  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ});
+  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ,targets});
   try{
-    const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3})}],'You are a skilled children\'s fiction writer.',3000);
+    const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3,targets})}],'You are a skilled children\'s fiction writer.',3000);
     if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story,storyStartedAt:Date.now(),storySeconds:null});
     else setState({screen:'story-detective',fullStory:story,storyStartedAt:Date.now(),storySeconds:null});
   }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
@@ -1543,7 +1617,7 @@ function handleOptionChoice(choice){S.topic={...(S.topic||{}),choice};generateCo
 async function generateContinuation(choice){
   setState({screen:'continuation-loading'});
   const p=S.activeProfile,st=S.persistedState;
-  try{const cont=await callClaude([{role:'user',content:buildContinuationPrompt({firstPart:S.firstPart,choice,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,wordLength:st.storyWordLength||p.defaultStoryWords})}],'You are a skilled children\'s fiction writer.',1800);
+  try{const cont=await callClaude([{role:'user',content:buildContinuationPrompt({firstPart:S.firstPart,choice,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,wordLength:st.storyWordLength||p.defaultStoryWords,targets:S.targets})}],'You are a skilled children\'s fiction writer.',1800);
   setState({screen:'continuation',continuation:cont,fullStory:(S.firstPart||'')+'\n\n'+cont});}
   catch(err){setState({screen:'story-cyp',error:`Continuation failed: ${err.message}`});}
 }
@@ -1561,15 +1635,16 @@ async function handleReadyForQuestions(){
     const factCount=st.factIntensity||3;
     let items=[],factBullets=[],factTopic='';
     for(let attempt=0;attempt<2;attempt++){
-      const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount})}],'You are a reading comprehension teacher. Return only valid JSON — no comments, no trailing commas.',8000);
+      const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount,targets:S.targets})}],'You are a reading comprehension teacher. Return only valid JSON — no comments, no trailing commas.',8000);
       const parsed=parseJsonLoose(raw);
       if(!parsed){if(attempt===0)continue;throw new Error('Could not parse questions. Please retry.');}
       let qs;
       if(Array.isArray(parsed)){qs=parsed;}
       else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
       items=assembleItems(expandTwoPart(qs),numQ,numMathQ);
-      if(items.filter(q=>q.type==='math').length>=numMathQ)break; // otherwise ask once more
+      if(items.filter(q=>q.type==='math').length>=numMathQ&&targetsCovered(items,S.targets))break; // otherwise ask once more
     }
+    items=items.map(shuffleChoices);
     if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
     setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
@@ -1584,6 +1659,14 @@ function parseJsonLoose(raw){
   if(a<0||b<=a)return null;
   t=t.slice(a,b+1).replace(/\/\*[\s\S]*?\*\//g,'').replace(/,(\s*[}\]])/g,'$1');
   try{return JSON.parse(t);}catch{return null;}
+}
+// Did the questions actually use this session's target skills? (Allow one miss.)
+function targetsCovered(items,t){
+  if(!t)return true;
+  const want=[...t.story,...t.info],have=new Set(items.filter(q=>q.partLabel!=='Part B').map(q=>q.skill));
+  const missing=want.filter(k=>!have.has(k)).length;
+  const inf=items.filter(q=>q.also==='inference'||q.skill==='inference').length;
+  return missing<=1&&inf>=1;
 }
 // Fit the AI's questions to the session size. Math always comes last, so a
 // plain trim used to cut the math whenever the AI wrote extra reading
@@ -1839,11 +1922,11 @@ async function handleConfirmSave(){
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
     v:2,...bd,readingAtCap:meta.readingAtCap,
-    storySeconds:S.storySeconds??null,resumed:!!S.resumedDraft,timing:2,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
+    storySeconds:S.storySeconds??null,resumed:!!S.resumedDraft,timing:2,appVersion:APP_VERSION,targets:S.targets||null,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);

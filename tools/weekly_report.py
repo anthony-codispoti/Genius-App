@@ -5,7 +5,8 @@ import json, urllib.request, datetime, collections
 URL = "https://dtcsjhxfnjxnfeyfeeaj.supabase.co/rest/v1/child_state?child_id=eq.{}&select=state"
 KEY = "sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK"
 KIDS = {"gio": ("Gio", ["text_complexity", "informational", "inference", "theme"]),
-        "valentino": ("Valentino", ["compare_contrast", "theme", "integration", "vocab_context"])}
+        "valentino": ("Valentino", ["inference", "evidence", "figurative", "setting", "plot_events", "point_of_view", "cause_effect",
+                                   "info_explicit", "info_structure", "fact_opinion", "text_types"])}
 # Typical silent reading speed is ~150-200 words/min at these ages; well over that means skimming.
 FAST_WPM = {"gio": 380, "valentino": 300}
 now = datetime.datetime.now()
@@ -35,9 +36,9 @@ for cid, (name, focus) in KIDS.items():
         sk = collections.defaultdict(lambda: [0, 0])
         for h in v2:
             for q in h.get("questions", []):
-                if q.get("skill") and q["skill"] != "math":
-                    sk[q["skill"]][1] += 1
-                    sk[q["skill"]][0] += q.get("correct", False)
+                for k in {q.get("skill"), q.get("also")} - {None, "math"}:
+                    sk[k][1] += 1
+                    sk[k][0] += q.get("correct", False)
         for k, (c, t) in sorted(sk.items(), key=lambda x: x[1][0] / x[1][1]):
             print(f"  {k}{' (focus)' if k in focus else ''}: {pct(c, t)}")
         ups = sum(1 for h in v2 if h.get("readingLevelUp"))
