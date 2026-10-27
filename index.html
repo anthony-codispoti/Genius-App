@@ -384,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-27a';
+const APP_VERSION='v2026-10-27b';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -1028,7 +1028,7 @@ ${nm>1?`   - Last math question ("difficulty":"stretch"): EXACTLY TWO steps, no 
    - The stretch problem (Step 1 + Step 2) counts as ONE of the ${nm} math questions`:''}
    - The answer must be ONE number (integer, decimal, fraction like 3/4, mixed number like 2 1/2, or negative). Put it in "answer_value" as a string, e.g. "-2.5" or "3/4"
    - full_answer must show the calculation steps and final number
-   - hint3: get him started with the REAL numbers — say which operation to use and write it out with the story's numbers (e.g. "Multiply 48 × 0.85"), without the result. Never the final answer
+   - hint3: a worked example of the SAME method using DIFFERENT numbers — never the answer or part of it
 ${nf>0?`
 FACT QUESTIONS (exactly ${nf}, type "fact"):
    - ${targets?'Use the fact-question TARGET SKILLS above, about the in-story document':'Ask directly about one of the real-world facts you list in fact_bullets below — something stated plainly in the story, not requiring outside knowledge'}
@@ -1063,7 +1063,7 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
     non-math: {"q":"...","type":"lesson|general|fact","skill":"inference",${targets?'"also":"inference (optional)",':''}"difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."},"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
-    math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"the setup with the story's numbers, no result","full_answer":"..."${nm>1?',"step2":{...only on the stretch problem}':''}}
+    math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"worked example with different numbers","full_answer":"..."${nm>1?',"step2":{...only on the stretch problem}':''}}
   ]${profile.earnBack?',\n  "earn_back": [ /* same question formats as above */ ]':''}
 }
 
@@ -1131,7 +1131,7 @@ function renderSetup(){const key=loadApiKey();return`<div class="card" style="ma
 const RULES_TAG='rules-2026-10-27';
 const RULES_MSG={
   gio:{title:'⚡ NEW RULES ⚡',items:['📉 Fewer questions every session.','🔁 Miss one? You get an <b>earn-back</b> question at the end (up to 3).','🐢 Careful = done faster. Rushing = more questions.','🧮 Hard math now comes in 2 smaller steps.','💡 After the last hint, you try once more before you can see the answer.']},
-  valentino:{title:'⚡ NEW MATH RULES ⚡',items:['🧮 Hard math problems now come in 2 smaller steps.','💡 Hint 3 now helps you get started with the real numbers.','✏️ After the last hint, you try once more before you can see the answer.']},
+  valentino:{title:'⚡ NEW MATH RULES ⚡',items:['🧮 Hard math problems now come in 2 smaller steps.','✏️ After the last hint, you try once more before you can see the answer.']},
 };
 function renderRulesOverlay(p,st){
   const m=RULES_MSG[p.newRules];
@@ -1268,7 +1268,7 @@ function renderQuestions(){
 
         ${hl>=1&&!showFull?`<div class="hint-box mt10"><strong>Hint 1:</strong> ${eh(q.hint1)}</div>`:''}
         ${hl>=2&&!showFull?`<div class="hint-box mt10"><strong>Hint 2:</strong> ${eh(q.hint2)}</div>`:''}
-        ${hl>=3&&!showFull?`<div class="hint-box mt10">${q.hint3?`<strong>Hint 3 (getting started):</strong> ${eh(q.hint3)}<br><em class="text-muted text-sm">Now finish the calculation.</em>`:`<strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em>`}</div>`:''}
+        ${hl>=3&&!showFull?`<div class="hint-box mt10">${q.hint3?`<strong>Hint 3 (worked example):</strong> ${eh(q.hint3)}<br><em class="text-muted text-sm">Now do the same steps with the numbers from the story.</em>`:`<strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em>`}</div>`:''}
         ${showFull?`<div class="answer-box mt10"><strong>Full answer:</strong> ${eh(q.full_answer)}</div>`:''}
 
         ${S.gradingError?`<div class="error-box mt10">${eh(S.gradingError)} <button class="btn btn-secondary mt8" style="padding:5px 12px;font-size:.82rem;" id="retryGradeBtn">Retry</button></div>`:''}
