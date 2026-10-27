@@ -75,6 +75,9 @@ for cid, (name, focus) in KIDS.items():
             away = sum(q.get("awaySecs", 0) for q in mc)
             if away:
                 print(f"Time the app was in the background during questions: {away}s")
+        ebq = [q for h in v2 for q in h.get("questions", []) if q.get("eb")]
+        if ebq:
+            print(f"Earn-back questions added: {len(ebq)} | right on first try: {pct(sum(q.get('correct', False) for q in ebq), len(ebq))}")
         resumed = [h["date"] for h in v2 if h.get("resumed")]
         if resumed:
             print(f"Sessions resumed after a refresh: {', '.join(resumed)}")

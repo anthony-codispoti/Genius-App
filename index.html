@@ -71,6 +71,13 @@ input[type="range"]{width:100%;accent-color:var(--accent);}
 .pr-field{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);}
 .pr-field:last-child{border-bottom:none;}
 .pr-field label{margin:0;min-width:170px;font-size:.92rem;color:var(--text);}
+.rules-overlay{position:fixed;inset:0;z-index:999;background:rgba(5,6,12,.92);display:flex;align-items:center;justify-content:center;padding:16px;}
+.rules-box{max-width:560px;width:100%;background:var(--surface);border:3px solid var(--warning);border-radius:18px;padding:28px 22px;text-align:center;}
+.rules-flash{font-size:clamp(2.2rem,9vw,3.6rem);font-weight:900;line-height:1.1;margin-bottom:18px;letter-spacing:.02em;animation:rules-flash .9s steps(1,end) infinite;}
+@keyframes rules-flash{0%{color:var(--warning);}50%{color:#ff4fd8;}}
+.rules-list{text-align:left;font-size:1.15rem;font-weight:600;line-height:1.5;margin:0 0 22px;padding-left:4px;list-style:none;}
+.rules-list li{margin-bottom:10px;}
+@media (prefers-reduced-motion:reduce){.rules-flash{animation:none;color:var(--warning);}}
 .level-announce{padding:10px 14px;margin:6px 0;background:rgba(61,186,122,.1);border:1px solid rgba(61,186,122,.3);border-radius:var(--rs);color:var(--success);font-weight:600;}
 /* Child switcher */
 .child-switcher{display:flex;border-radius:var(--rs);overflow:hidden;border:1px solid var(--border);width:fit-content;}
@@ -183,8 +190,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:7.0,readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
+  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:6.5,mathCalibrationTag:'math-2026-10b',earnBack:3,newRules:'gio',readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
+  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -377,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-24d';
+const APP_VERSION='v2026-10-27a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -416,7 +423,7 @@ async function freshestState(p){
 // blob back — so finishing a session never silently reverts a settings
 // change made on another device (or an earlier, unreloaded tab) in the
 // meantime, without touching the session's own progress/points arithmetic.
-const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName'];
+const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQuestions','numFactQuestions','storyWordLength','factIntensity','customMathDomains','factDomainsActive','factDomainFreeform','factDomainRepeatLimit','activeTheme','heroName','rulesSeen'];
 
 // ─── In-progress session draft ──────────────────────────────────────────────
 // A story (and especially the questions step right after it) can fail on a
@@ -425,7 +432,7 @@ const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQues
 // on a screen worth resuming, so a refresh (or a crash that forces one) can
 // put the reader right back where they were instead of discarding everything.
 const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
-const DRAFT_FIELDS=['targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic'];
+const DRAFT_FIELDS=['targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice'];
 function draftKey(p){return p.storageKey+'_draft';}
 function saveDraft(){
   if(!S.activeProfile)return;
@@ -594,8 +601,9 @@ function calibrate(p,st){
   let ns=st;
   if(st.calibration!==CALIBRATION_TAG&&p.calibratedReadingLevel!=null)
     ns={...ns,readingLevel:p.calibratedReadingLevel,readingCap:st.readingCap??p.readingCap,readingConsec5:0,readingConseqLow:0,calibration:CALIBRATION_TAG};
-  if(st.mathCalibration!==MATH_CALIBRATION_TAG&&p.calibratedMathLevel!=null)
-    ns={...ns,mathLevel:p.calibratedMathLevel,mathConsec5:0,mathConseqLow:0,mathUpDates:[],mathCalibration:MATH_CALIBRATION_TAG};
+  const mTag=p.mathCalibrationTag||MATH_CALIBRATION_TAG;
+  if(st.mathCalibration!==mTag&&p.calibratedMathLevel!=null)
+    ns={...ns,mathLevel:p.calibratedMathLevel,mathConsec5:0,mathConseqLow:0,mathUpDates:[],mathCalibration:mTag};
   return ns;
 }
 const READING_SKILLS={
@@ -694,6 +702,7 @@ function sessionBreakdown(questions,answers,profile){
   const focus=(profile&&profile.readingFocus)||[];
   let rC=0,rT=0,mC=0,mT=0,fC=0,fT=0;
   (questions||[]).forEach((q,i)=>{const a=(answers||[])[i]||{};
+    if(q.earnBack)return; // extra practice after a miss — not part of the level math
     if(q.type==='math'){mT++;if(a.correct&&!(a.hintsUsed>0))mC++;return;}
     rT++;if(a.correct)rC++;
     if(focus.includes(q.skill)||q.difficulty==='stretch'){fT++;if(a.correct)fC++;}});
@@ -1013,10 +1022,13 @@ TWO-PART QUESTIONS (evidence — like Ohio's state test):
 MATH QUESTIONS (exactly ${nm}, type "math"):
    - Skill: ${mathSkillFor(profile,mathDomain)} — ${profile.mathGrade||profile.grade} grade standard
    - Ask ${profile.name} to calculate the answer himself; each uses different numbers from the story
-   - First math question: grade-level ("difficulty":"core"). ${nm>1?'Last math question: two or more steps ("difficulty":"stretch").':''} Never trivial one-step arithmetic below grade level
+   - First math question: grade-level ("difficulty":"core"), ONE clear calculation. Never trivial arithmetic below grade level
+${nm>1?`   - Last math question ("difficulty":"stretch"): EXACTLY TWO steps, no more. Split it: the main object asks ONLY for the Step 1 result; add a "step2" object (same fields: q, answer_value, acceptable_variants, hint1, hint2, hint3, full_answer) whose q starts "Step 1 gave you [the step-1 result]." and then asks for the final answer
+   - No hidden conversions: if the story says something "loses 0.25", that subtraction (or "keep 0.75") IS a step and counts toward the two
+   - The stretch problem (Step 1 + Step 2) counts as ONE of the ${nm} math questions`:''}
    - The answer must be ONE number (integer, decimal, fraction like 3/4, mixed number like 2 1/2, or negative). Put it in "answer_value" as a string, e.g. "-2.5" or "3/4"
    - full_answer must show the calculation steps and final number
-   - hint3: a worked example of the SAME method using DIFFERENT numbers — never the answer or part of it
+   - hint3: get him started with the REAL numbers — say which operation to use and write it out with the story's numbers (e.g. "Multiply 48 × 0.85"), without the result. Never the final answer
 ${nf>0?`
 FACT QUESTIONS (exactly ${nf}, type "fact"):
    - ${targets?'Use the fact-question TARGET SKILLS above, about the in-story document':'Ask directly about one of the real-world facts you list in fact_bullets below — something stated plainly in the story, not requiring outside knowledge'}
@@ -1051,11 +1063,12 @@ Return a JSON OBJECT (not array) with these keys:
   "fact_bullets": ["Short punchy real-world fact 1", "..." /* exactly ${fc} of these */],
   "questions": [
     non-math: {"q":"...","type":"lesson|general|fact","skill":"inference",${targets?'"also":"inference (optional)",':''}"difficulty":"core|stretch","choices":["A. ...","B. ...","C. ...","D. ..."],"correct_choice":"B","part_b":{"q":"Which sentence from the story best supports the answer to Part A?","choices":["A. \"...\"","B. \"...\"","C. \"...\"","D. \"...\""],"correct_choice":"C","full_answer":"..."},"hint1":"...","hint2":"...","hint3_partial":"...","full_answer":"..."},
-    math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"worked example with different numbers","full_answer":"..."}
-  ]
+    math:      {"q":"...","type":"math","skill":"math","difficulty":"core|stretch","answer_value":"-2.5","acceptable_variants":["...","...","...","..."],"hint1":"...","hint2":"...","hint3":"the setup with the story's numbers, no result","full_answer":"..."${nm>1?',"step2":{...only on the stretch problem}':''}}
+  ]${profile.earnBack?',\n  "earn_back": [ /* same question formats as above */ ]':''}
 }
 
-- fact_topic: the specific angle you picked (one phrase, e.g. "Roman aqueducts")
+${profile.earnBack?`- earn_back: (top-level key, NOT inside "questions") ${profile.earnBack+1} EXTRA standalone questions used only if ${profile.name} misses one: ${profile.earnBack} multiple-choice reading questions (one per skill, use his focus skills, at least one about the in-story document; no part_b; same choices/correct_choice/hints/full_answer format) and 1 core math question (one calculation, different numbers from the story). Different from every question above
+`:''}- fact_topic: the specific angle you picked (one phrase, e.g. "Roman aqueducts")
 - fact_bullets: exactly ${fc} real facts from the domain — short, punchy, surprising. NOT summaries of the story. Real-world truths that appeared in the story.
 - questions array: ${n} items total (a two-part question = 2 items), i.e. ${n-(lessonTwoPart?1:0)-genTwoPart} question objects
   - Exactly ${nm} type "math"
@@ -1115,6 +1128,22 @@ function renderSwitcher(){const id=(S.activeProfile||PROFILES.gio).id;return`<di
 // ─── Home ──────────────────────────────────────────────────────────────────────
 function renderSetup(){const key=loadApiKey();return`<div class="card" style="max-width:460px;margin:60px auto;"><h1 class="mb12">📚 Daily Reading & Math</h1><p class="text-muted mb16">Enter your Anthropic API key. Stored only in this browser.</p><label>Anthropic API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Sent only to Anthropic — never stored elsewhere.</p><div class="mt16"><button class="btn btn-primary btn-full btn-lg" id="setupBtn">Continue →</button></div>${S.error?`<div class="error-box mt12">${eh(S.error)}</div>`:''}</div>`;}
 
+const RULES_TAG='rules-2026-10-27';
+const RULES_MSG={
+  gio:{title:'⚡ NEW RULES ⚡',items:['📉 Fewer questions every session.','🔁 Miss one? You get an <b>earn-back</b> question at the end (up to 3).','🐢 Careful = done faster. Rushing = more questions.','🧮 Hard math now comes in 2 smaller steps.','💡 After the last hint, you try once more before you can see the answer.']},
+  valentino:{title:'⚡ NEW MATH RULES ⚡',items:['🧮 Hard math problems now come in 2 smaller steps.','💡 Hint 3 now helps you get started with the real numbers.','✏️ After the last hint, you try once more before you can see the answer.']},
+};
+function renderRulesOverlay(p,st){
+  const m=RULES_MSG[p.newRules];
+  if(!m||st.rulesSeen===RULES_TAG)return'';
+  return`<div class="rules-overlay"><div class="rules-box"><div class="rules-flash">${m.title}</div><ul class="rules-list">${m.items.map(i=>`<li>${i}</li>`).join('')}</ul><button class="btn btn-warning btn-lg btn-full" id="rulesGotItBtn">Got it 👍</button></div></div>`;
+}
+async function handleRulesGotIt(){
+  const p=S.activeProfile;
+  // Gio: fewer base questions so a careful session is shorter than before.
+  const{stamped}=await saveSettingsSynced(p,b=>({...b,rulesSeen:RULES_TAG,...(p.id==='gio'&&(b.numQuestions||0)>7?{numQuestions:7,numFactQuestions:Math.min(b.numFactQuestions||0,2)}:{})}));
+  setState({persistedState:calibrate(p,stamped)});
+}
 function renderHome(){
   const p=S.activeProfile,st=S.persistedState,today=new Date();
   const _ad=st.customMathDomains&&st.customMathDomains.length?st.customMathDomains:p.mathDomains,_ct=st.mathClassTopic||p.defaultClassTopic;
@@ -1133,7 +1162,7 @@ function renderHome(){
   if(sync==='ok')setTimeout(()=>{S.syncStatus=null;render();},3000);
   const v2n=(st.sessionHistory||[]).filter(h=>h.v===2).length;
   const rulesBanner=st.calibration&&v2n<4?`<div class="level-announce mb8" style="color:var(--text);">🆕 New rules: only your <b>first pick</b> counts now, so read closely before you tap. ⭐ Challenge questions are worth +5 bonus points. Some questions come in two parts: the answer, then the sentence that proves it.</div>`:'';
-  return banners+badgeBanners+syncBanner+rulesBanner+`
+  return renderRulesOverlay(p,st)+banners+badgeBanners+syncBanner+rulesBanner+`
   <div class="top-nav">${renderSwitcher()}<div class="top-nav-right"><span class="points-pill" id="rewardsNavBtn">⭐ ${st.points||0} pts</span></div></div>
   <div class="session-hdr">
     <div style="display:flex;align-items:center;gap:16px;">${renderAvatar(st.avatarEquipped,116,p.gender)}<div><h1>Hey ${eh(p.name)}! 👋</h1><p class="text-muted">${today.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</p></div></div>
@@ -1230,7 +1259,8 @@ function renderQuestions(){
     <!-- Question — right column -->
     <div>
       <div class="card">
-        ${q.partLabel||q.difficulty==='stretch'?`<div class="mb8" style="display:flex;gap:6px;">${q.partLabel?`<span class="tag tag-accent">${eh(q.partLabel)}</span>`:''}${q.difficulty==='stretch'?'<span class="tag" style="border-color:var(--warning);color:var(--warning);">⭐ Challenge +5</span>':''}</div>`:''}
+        ${S.ebNotice?`<div class="level-announce mb8" style="color:var(--warning);background:rgba(245,166,35,.1);border-color:rgba(245,166,35,.35);">🔁 ${eh(S.ebNotice)}</div>`:''}
+        ${q.earnBack||q.partLabel||q.difficulty==='stretch'?`<div class="mb8" style="display:flex;gap:6px;">${q.earnBack?'<span class="tag" style="border-color:var(--warning);color:var(--warning);">🔁 Earn-back</span>':''}${q.partLabel?`<span class="tag tag-accent">${eh(q.partLabel)}</span>`:''}${q.difficulty==='stretch'?'<span class="tag" style="border-color:var(--warning);color:var(--warning);">⭐ Challenge +5</span>':''}</div>`:''}
         ${q.partAAnswer?`<div class="text-xs text-muted mb8">Part A answer: ${eh(q.partAAnswer)}</div>`:''}
         <div style="font-size:1rem;font-weight:600;margin-bottom:14px;line-height:1.4;">${eh(q.q)}</div>
 
@@ -1238,7 +1268,7 @@ function renderQuestions(){
 
         ${hl>=1&&!showFull?`<div class="hint-box mt10"><strong>Hint 1:</strong> ${eh(q.hint1)}</div>`:''}
         ${hl>=2&&!showFull?`<div class="hint-box mt10"><strong>Hint 2:</strong> ${eh(q.hint2)}</div>`:''}
-        ${hl>=3&&!showFull?`<div class="hint-box mt10">${q.hint3?`<strong>Hint 3 (worked example):</strong> ${eh(q.hint3)}<br><em class="text-muted text-sm">Now do the same steps with the numbers from the story.</em>`:`<strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em>`}</div>`:''}
+        ${hl>=3&&!showFull?`<div class="hint-box mt10">${q.hint3?`<strong>Hint 3 (getting started):</strong> ${eh(q.hint3)}<br><em class="text-muted text-sm">Now finish the calculation.</em>`:`<strong>Hint 3 (partial answer):</strong> ${eh(q.hint3_partial)}…<br><em class="text-muted text-sm">Can you complete the thought?</em>`}</div>`:''}
         ${showFull?`<div class="answer-box mt10"><strong>Full answer:</strong> ${eh(q.full_answer)}</div>`:''}
 
         ${S.gradingError?`<div class="error-box mt10">${eh(S.gradingError)} <button class="btn btn-secondary mt8" style="padding:5px 12px;font-size:.82rem;" id="retryGradeBtn">Retry</button></div>`:''}
@@ -1247,7 +1277,7 @@ function renderQuestions(){
           <div class="correct-celebrate mt12">
             <div class="celebrate-check">${S.correctFeedback.retry?'🔎':'✓'}</div>
             <div class="celebrate-pts">${S.correctFeedback.retry?'Found it':'Correct!'}</div>
-            <div class="celebrate-bonus">${S.correctFeedback.retry?'Only first tries earn points — read closely next time':`+${S.correctFeedback.points} points`}</div>
+            <div class="celebrate-bonus">${S.correctFeedback.retry?((S.activeProfile||{}).earnBack&&(S.earnBacksAdded||0)<(S.activeProfile||{}).earnBack&&(S.earnBackPool||[]).length?'Only first tries count — an earn-back question gets added at the end':'Only first tries earn points — read closely next time'):`+${S.correctFeedback.points} points`}</div>
             <div class="celebrate-sub">${qi+1<total?'Moving to next question…':'Almost done…'}</div>
           </div>
         `:q.choices&&q.type!=='math'?`
@@ -1270,7 +1300,7 @@ function renderQuestions(){
           ${hl<3&&!(S.wrongAttempts||[]).length?`<p class="text-xs text-muted mt8">Give it your best try first — hints unlock after your first answer.</p>`:''}
           <div>
           </div>
-          ${hl>=3?`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`:''}
+          ${hl>=3&&(S.wrongAttempts||[]).length>(S.hl3At??0)?`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`:hl>=3?`<p class="text-xs text-muted mt8">Use Hint 3 and try once more — then you can see the answer if you still need it.</p>`:''}
           ${wrongAttempts.length>0?`<div class="mt10 text-center"><button class="parent-override-btn" id="parentOverrideBtn">Parent: mark correct</button></div>`:''}
         `:`<button class="btn btn-primary btn-full mt12" id="nextQBtn">Next ${qi+1<total?'question':'to results'} →</button>`}
 
@@ -1290,11 +1320,11 @@ function renderQuestions(){
 
 // ─── Wrapup ───────────────────────────────────────────────────────────────────
 function renderWrapup(){
-  const score=S.score,total=(S.questions||[]).length;
+  const score=S.score,total=(S.questions||[]).filter(q=>!q.earnBack).length;
   const sessionPts=(S.answers||[]).reduce((s,a)=>s+(a.pointsEarned||0),0)+5;
   const qSummary=(S.questions||[]).map((q,i)=>{
     const a=S.answers[i];if(!a)return'';
-    return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">Q${i+1}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
+    return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">${q.earnBack?'🔁 Earn-back':`Q${i+1}`}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
   }).join('');
   const hasReal=S.factBullets&&S.factBullets.length>0;
   return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
@@ -1492,6 +1522,7 @@ function bindEvents(){
   on('rewardsBtnHome','click',()=>goTo('rewards'));
   on('historyBtn','click',()=>goTo('history'));
   on('settingsBtn','click',showPinModal);
+  on('rulesGotItBtn','click',e=>{e.currentTarget.disabled=true;handleRulesGotIt();});
   on('backHomeBtn','click',()=>goTo('home'));
   on('startNewBtn','click',handleStartNew);
   on('continueBtn','click',handleStartContinue);
@@ -1501,7 +1532,7 @@ function bindEvents(){
   on('submitChoiceBtn','click',()=>{const v=val('customChoiceInput');if(v.trim())handleOptionChoice(v.trim());});
   on('readyForQBtn','click',handleReadyForQuestions);
   on('submitAnswerBtn','click',handleSubmitAnswer);
-  on('hintBtn','click',()=>setState({hintLevel:Math.min((S.hintLevel||0)+1,3)}));
+  on('hintBtn','click',()=>{const h=Math.min((S.hintLevel||0)+1,3);setState({hintLevel:h,hl3At:h>=3&&S.hl3At==null?(S.wrongAttempts||[]).length:S.hl3At});});
   on('showFullBtn','click',()=>setState({showFullAnswer:true}));
   on('nextQBtn','click',()=>finalizeQuestion(false,''));
   on('retryGradeBtn','click',handleSubmitAnswer);
@@ -1617,7 +1648,7 @@ async function startSession(topicInput,isContinuation){
   const numQ=st.numQuestions||p.numQuestions;
   const targets=chooseTargets(p,st,numQ);
   S.resumedDraft=false;S.preSaveState=null;S.sessionSaved=false;
-  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ,targets});
+  setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ,targets,earnBackPool:[],earnBacksAdded:0,hl3At:null,ebNotice:null});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3,targets})}],'You are a skilled children\'s fiction writer.',3000);
     if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story,storyStartedAt:Date.now(),storySeconds:null});
@@ -1645,21 +1676,23 @@ async function handleReadyForQuestions(){
     // Clamp in case numQuestions was later lowered below a combo saved earlier — always leave room for the mandatory lesson question.
     const numFactQ=Math.min(st.numFactQuestions||0,Math.max(numQ-numMathQ-1,0));
     const factCount=st.factIntensity||3;
-    let items=[],factBullets=[],factTopic='';
+    let items=[],factBullets=[],factTopic='',pool=[];
     for(let attempt=0;attempt<2;attempt++){
       const raw=await callClaude([{role:'user',content:buildQuestionsPrompt({story:S.fullStory,mathDomain:S.mathDomain,lifeLesson:S.lifeLesson,profile:p,readingLevel:st.readingLevel,numQ,numMathQ,numFactQ,factCount,targets:S.targets})}],'You are a reading comprehension teacher. Return only valid JSON — no comments, no trailing commas.',8000);
       const parsed=parseJsonLoose(raw);
       if(!parsed){if(attempt===0)continue;throw new Error('Could not parse questions. Please retry.');}
       let qs;
       if(Array.isArray(parsed)){qs=parsed;}
-      else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';}
+      else{qs=parsed.questions||[];factBullets=parsed.fact_bullets||[];factTopic=parsed.fact_topic||'';pool=Array.isArray(parsed.earn_back)?parsed.earn_back:[];}
       items=assembleItems(expandTwoPart(qs),numQ,numMathQ);
       if(items.filter(q=>q.type==='math').length>=numMathQ&&targetsCovered(items,S.targets))break; // otherwise ask once more
     }
     items=items.map(shuffleChoices);
+    // Earn-back pool: plain single questions only (drop any Part B / Step 2 the AI added)
+    const earnBackPool=p.earnBack?pool.filter(q=>q&&q.q&&(q.type==='math'?q.answer_value!=null:Array.isArray(q.choices)&&q.correct_choice)).map(q=>{const c={...q};delete c.part_b;delete c.step2;return shuffleChoices(c);}):[];
     if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
     startChoicePause(items[0]);
-    setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic});
+    setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic,earnBackPool,earnBacksAdded:0,hl3At:null,ebNotice:null});
   }catch(err){setState({screen:S.format==='Choose-Your-Path'?'continuation':'story-detective',error:`Question generation failed: ${err.message}`});}
 }
 
@@ -1690,7 +1723,7 @@ function assembleItems(groups,numQ,numMathQ){
   const math=groups.filter(isMath).slice(0,numMathQ);
   let rest=groups.filter(g=>!isMath(g));
   const count=gs=>gs.reduce((n,g)=>n+g.length,0);
-  const room=numQ-count(math);
+  const room=numQ-math.length; // a 2-step math problem still counts as one question
   while(count(rest)>room){
     const pick=ok=>{for(let j=rest.length-1;j>=0;j--)if(ok(rest[j]))return j;return-1;};
     let i=pick(g=>g[0].type==='general'&&g.length===1);   // single general first
@@ -1704,6 +1737,11 @@ function assembleItems(groups,numQ,numMathQ){
 // (which sentence proves it). Returns groups so A and B are never split.
 function expandTwoPart(qs){
   return qs.map(q=>{
+    if(q.type==='math'&&q.step2&&q.step2.q){
+      const A={...q,partLabel:'Step 1 of 2'};delete A.step2;
+      return[A,{...q.step2,type:'math',skill:'math',difficulty:q.difficulty,partLabel:'Step 2 of 2'}];
+    }
+    if(q.type==='math')delete q.step2;
     if(!q.part_b||!Array.isArray(q.part_b.choices))return[q];
     const aText=((q.choices||[]).find(c=>c.charAt(0)===q.correct_choice)||'').replace(/^[A-D]\.\s*/,'');
     const A={...q,partLabel:'Part A'};delete A.part_b;
@@ -1781,7 +1819,7 @@ async function handleSubmitAnswer(){
       // Keep wrong answer visible, advance hint
       const newWrong=[...(S.wrongAttempts||[]),answer];
       const newHL=Math.min(hl+1,3);
-      setState({wrongAttempts:newWrong,hintLevel:newHL});
+      setState({wrongAttempts:newWrong,hintLevel:newHL,hl3At:newHL>=3&&hl<3?newWrong.length:S.hl3At});
       if(newHL>=3&&hl>=3){
         // Already at hint 3 and still wrong — they've been here; let them keep trying or show answer
         // (no auto-fail; they choose to show answer themselves)
@@ -1804,12 +1842,24 @@ function finalizeQuestion(correct,userAnswer,overridePts){
   const secs=toS(S.qLastTapAt||Date.now()),firstSecs=toS(S.qFirstTapAt),awaySecs=S.qHiddenMs?Math.round(S.qHiddenMs/1000):0;
   const tries=Math.max((S.wrongChoices||[]).length,(S.wrongAttempts||[]).length)+(userAnswer?1:0);
   const newAnswers=[...(S.answers||[]),{correct,hintsUsed:hl,userAnswer,pointsEarned:pts,skill:q0.skill||null,secs,firstSecs,awaySecs,tries}];
-  const newScore=S.score+(correct?1:0);
+  const newScore=S.score+(correct&&!q0.earnBack?1:0);
+  // A miss adds an earn-back question at the end (capped), so rushing makes the session longer.
+  let ebNotice=null;
+  const cap=(S.activeProfile||{}).earnBack||0;
+  if(!correct&&cap&&(S.earnBacksAdded||0)<cap&&(S.earnBackPool||[]).length){
+    const pool=[...S.earnBackPool],wantMath=q0.type==='math';
+    let i=pool.findIndex(x=>(x.type==='math')===wantMath&&(wantMath||x.skill===q0.skill||x.skill===q0.also));
+    if(i<0)i=pool.findIndex(x=>(x.type==='math')===wantMath);
+    if(i<0)i=0;
+    const eb={...pool.splice(i,1)[0],earnBack:true};
+    S.questions=[...S.questions,eb];S.earnBackPool=pool;S.earnBacksAdded=(S.earnBacksAdded||0)+1;
+    ebNotice=`Missed one, so an earn-back question was added at the end (${S.earnBacksAdded} of ${cap} max).`;
+  }
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
   S.qFirstTapAt=null;S.qLastTapAt=null;S.qHiddenMs=0;S.qHiddenAt=null;
   if(isLast){setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});handleConfirmSave({auto:true});}
   else{startChoicePause((S.questions||[])[nextQ]);}
-  if(!isLast)setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
+  if(!isLast)setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,hl3At:null,ebNotice,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
 }
 function spawnTrail(particles){
   for(let i=0;i<10;i++){
@@ -1960,7 +2010,7 @@ async function handleConfirmSave(opts){
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer};}),
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer,eb:!!q.earnBack};}),earnBacks:S.earnBacksAdded||0,
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
