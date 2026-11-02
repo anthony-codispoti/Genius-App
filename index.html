@@ -384,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-11-02b';
+const APP_VERSION='v2026-11-02c';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -1171,8 +1171,8 @@ function renderSetup(){const key=loadApiKey();return`<div class="card" style="ma
 
 const RULES_TAG='rules-2026-11-02';
 const RULES_MSG={
-  gio:{title:'⚡ NEW RULES ⚡',items:['📖 Stories now come one page at a time. Each page unlocks the next after enough time to read it.','✅ A quick check question pops up partway through. Miss it and you reread that page.','🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 3). Careful = done faster.','💡 "Show answer" unlocks only after 1 minute and 2 real tries.']},
-  valentino:{title:'⚡ NEW RULES ⚡',items:['🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 2). Careful = done faster.','💡 "Show answer" unlocks only after 1 minute and 2 real tries.','🧮 Hard math problems come in 2 smaller steps.']},
+  gio:{title:'⚡ NEW RULES ⚡',items:['📖 Stories now come one page at a time. Read each page carefully before moving on.','✅ A quick check question pops up partway through. Miss it and you reread that page.','🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 3). Careful = done faster.','💡 "Show answer" unlocks only after you really work the problem (at least 2 real tries).']},
+  valentino:{title:'⚡ NEW RULES ⚡',items:['🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 2). Careful = done faster.','💡 "Show answer" unlocks only after you really work the problem (at least 2 real tries).','🧮 Hard math problems come in 2 smaller steps.']},
 };
 function renderRulesOverlay(p,st){
   const m=RULES_MSG[p.newRules];
@@ -1262,8 +1262,10 @@ function pagedStory(key,text,finalBtn,header){
   }
   const left=Math.ceil(pageMinSecs(pages[i],p)-(Date.now()-(S.pageShownAt||Date.now())-(S.pageHiddenMs||0))/1000);
   if(left>0){clearTimeout(S._pageT);S._pageT=setTimeout(()=>{if(S.pageKey===key)render();},Math.min(left,5)*1000);}
-  const btn=last?(left>0?`<button class="btn btn-primary btn-full btn-lg" disabled>Keep reading… ${left}s</button>`:finalBtn)
-    :`<button class="btn btn-primary btn-full btn-lg" id="nextPageBtn" ${left>0?'disabled':''}>${left>0?`Keep reading… ${left}s`:'Next page →'}</button>`;
+  // No countdown shown — just a grayed-out button until the page could have been read.
+  const finalLabel=(finalBtn.match(/>([^<>]*→)</)||[])[1]||'Continue →';
+  const btn=last?(left>0?`<button class="btn btn-primary btn-full btn-lg" disabled>${finalLabel}</button>`:finalBtn)
+    :`<button class="btn btn-primary btn-full btn-lg" id="nextPageBtn" ${left>0?'disabled':''}>Next page →</button>`;
   return`<div class="text-xs text-muted mb8">Page ${i+1} of ${pages.length}${S.checkpointMsg&&!S.checkpointShow?` — <span class="text-warning">${eh(S.checkpointMsg)}</span>`:''}</div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${i===0?(header||''):''}${eh(pages[i])}</div></div>${btn}`;
 }
 function handleNextPage(){
@@ -1868,8 +1870,8 @@ function showAnswerGate(){
   const left=S.qStartedAt?Math.ceil(SHOW_ANSWER_SECS-(Date.now()-S.qStartedAt-(S.qHiddenMs||0))/1000):0;
   if(afterHint3&&tries>=2&&left<=0)return`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`;
   if(left>0){clearTimeout(S._gateT);S._gateT=setTimeout(()=>{if(S.screen==='questions')render();},Math.min(left,5)*1000);}
-  const need=[!afterHint3?'try once more using Hint 3':'',tries<2?`make ${2-tries} more real ${2-tries===1?'try':'tries'}`:'',left>0?`keep working ${left}s more`:''].filter(Boolean);
-  return`<p class="text-xs text-muted mt8">To see the answer: ${need.join(', ')}.</p>`;
+  const need=[!afterHint3?'try once more using Hint 3':'',tries<2?`make ${2-tries} more real ${2-tries===1?'try':'tries'}`:''].filter(Boolean);
+  return`<button class="btn btn-warning btn-full mt8" disabled>Show full answer & move on</button>${need.length?`<p class="text-xs text-muted mt8">To unlock it: ${need.join(', ')}.</p>`:''}`;
 }
 function startChoicePause(q){
   const ms=readPauseMs(q,S.activeProfile);
