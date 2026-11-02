@@ -191,7 +191,7 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
   gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:6.5,mathCalibrationTag:'math-2026-10b',earnBack:3,newRules:'gio',readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
-  valentino:{id:'valentino',name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
+  valentino:{id:'valentino',mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -384,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-10-27b';
+const APP_VERSION='v2026-11-02a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -662,18 +662,21 @@ function pickSkills(keys,count,st){
     return{k,score:miss+0.6*gap+Math.random()*0.15};});
   return scored.sort((a,b)=>b.score-a.score).slice(0,count).map(x=>x.k);
 }
-function storyQuestionSlots(numQ,numMathQ,numFactQ){
-  const lessonTwoPart=(numQ-numMathQ-numFactQ)>=2;
+// mix (optional, per child): caps on target questions and two-part questions so
+// a struggling reader gets ~60% approachable "core" questions.
+function storyQuestionSlots(numQ,numMathQ,numFactQ,mix){
+  const lessonTwoPart=(numQ-numMathQ-numFactQ)>=2&&!(mix&&mix.lessonTwoPart===false);
   const nGeneral=Math.max(numQ-numMathQ-numFactQ-(lessonTwoPart?2:1),0);
-  const genTwoPart=nGeneral>=4?2:nGeneral>=2?1:0;
+  const genTwoPart=Math.min(nGeneral>=4?2:nGeneral>=2?1:0,mix&&mix.maxGenTwoPart!=null?mix.maxGenTwoPart:9);
   return{lessonTwoPart,nGeneral,genTwoPart,genSingles:nGeneral-2*genTwoPart,genObjects:genTwoPart+(nGeneral-2*genTwoPart)};
 }
 function chooseTargets(p,st,numQ){
   if(!p.storyFocus)return null;
   const nm=st.numMathQuestions||1,nf=Math.min(st.numFactQuestions||0,Math.max(numQ-nm-1,0));
-  const slots=storyQuestionSlots(numQ,nm,nf);
+  const slots=storyQuestionSlots(numQ,nm,nf,p.mix);
   const seed=(st.sessionHistory||[]).length;
-  return{story:pickSkills(p.storyFocus,slots.genObjects,st),info:pickSkills(p.infoFocus,nf,st),seed};
+  const ns=p.mix?Math.min(p.mix.storyTargets,slots.genObjects):slots.genObjects, ni=p.mix?Math.min(p.mix.infoTargets,nf):nf;
+  return{story:pickSkills(p.storyFocus,ns,st),info:pickSkills(p.infoFocus,ni,st),seed,coreGen:slots.genObjects-ns,coreInfo:nf-ni};
 }
 function targetSetupText(t){
   if(!t)return'';
@@ -682,6 +685,41 @@ function targetSetupText(t){
 }
 // Put the correct answer in a random spot. The AI kept the right answer in
 // A or B (D was correct once in ~200 questions), which kids can learn to exploit.
+// The AI tends to make the correct choice the longest/most detailed one, which
+// kids can exploit without reading (72-85% of the time in Oct 2026 data). The
+// prompt rule alone didn't fix it, so: find those questions and have the wrong
+// choices rewritten to similar length. Part B choices are quoted story
+// sentences and can't be rewritten, so they're skipped. Any failure keeps the originals.
+function choiceText(c){return String(c).replace(/^\s*[A-D][.)]\s*/,'');}
+function correctIsLongest(q){
+  if(!Array.isArray(q.choices)||q.choices.length<3||!q.correct_choice||q.partLabel==='Part B'||q.type==='math')return false;
+  const ci='ABCD'.indexOf(q.correct_choice);const L=q.choices.map(c=>choiceText(c).length);
+  const others=L.filter((_,i)=>i!==ci);return L[ci]>Math.max(...others)*1.1;
+}
+async function balanceChoiceLengths(items,p){
+  const bad=items.map((q,i)=>({q,i})).filter(x=>correctIsLongest(x.q));
+  if(!bad.length)return items;
+  const payload=bad.map(({q,i})=>({id:i,question:q.q,correct:choiceText(q.choices['ABCD'.indexOf(q.correct_choice)]),wrong:q.choices.filter((_,k)=>k!=='ABCD'.indexOf(q.correct_choice)).map(choiceText)}));
+  try{
+    const raw=await callClaude([{role:'user',content:`These are multiple-choice reading questions for ${p.name}, age ${p.age}. In each one the CORRECT answer is noticeably longer than the wrong ones, so a child can guess it without reading.
+
+Rewrite ONLY the wrong answers so each is about the same length as the correct answer (within a few words), with similar detail and tone. They must stay clearly wrong to a careful reader, plausible to a careless one, and use details from the same story where possible. Do not change the correct answer or the question.
+
+${JSON.stringify(payload)}
+
+Return ONLY JSON: {"fixes":[{"id":<id>,"wrong":["...","...","..."]}]} with the wrong answers in the same order as given.`}],'You write fair multiple-choice distractors. Return only valid JSON.',3000);
+    const r=parseJsonLoose(raw);const fixes=(r&&r.fixes)||[];
+    const out=[...items];
+    for(const fx of fixes){
+      const q=out[fx.id];if(!q||!Array.isArray(fx.wrong))continue;
+      const ci='ABCD'.indexOf(q.correct_choice);const oldWrong=q.choices.filter((_,k)=>k!==ci);
+      if(fx.wrong.length!==oldWrong.length||fx.wrong.some(w=>!w||typeof w!=='string'))continue;
+      let w=0;const nc=q.choices.map((c,k)=>k===ci?c:`${'ABCD'[k]}. ${fx.wrong[w++].replace(/^\s*[A-D][.)]\s*/,'')}`);
+      out[fx.id]={...q,choices:nc};
+    }
+    return out;
+  }catch(e){console.warn('Choice balancing skipped',e);return items;}
+}
 function shuffleChoices(q){
   if(!Array.isArray(q.choices)||q.choices.length<2||!q.correct_choice)return q;
   const strip=c=>String(c).replace(/^\s*[A-D][.)]\s*/,'');
@@ -974,8 +1012,8 @@ function buildQuestionsPrompt({story,mathDomain,lifeLesson,profile,readingLevel,
   const nm=numMathQ||1;
   const nf=numFactQ||0;
   const fc=factCount||3;
-  const{lessonTwoPart,nGeneral,genTwoPart,genSingles}=storyQuestionSlots(n,nm,nf); // items left after math, fact and the lesson question
-  const nStretch=Math.max(1,Math.round((n-nm)*0.4));
+  const{lessonTwoPart,nGeneral,genTwoPart,genSingles}=storyQuestionSlots(n,nm,nf,profile.mix); // items left after math, fact and the lesson question
+  const nStretch=targets&&targets.coreGen!=null&&profile.mix?targets.story.length+targets.info.length:Math.max(1,Math.round((n-nm)*0.4));
   return `Create exactly ${n} comprehension questions for ${profile.name}, age ${profile.age}, reading level ${readingLevel.toFixed(1)} (about ${lexileFor(readingLevel)}L).
 
 Story:
@@ -993,9 +1031,12 @@ ${Object.entries(READING_SKILLS).map(([k,v])=>`   - ${k}: ${v}`).join('\n')}
 ${profile.name.toUpperCase()}'S FOCUS SKILLS (from school testing — at least ${Math.min(2,nGeneral+1)} questions must use these): ${(profile.readingFocus||['inference','theme']).join(', ')}
 
 ${targets?`THIS SESSION'S TARGET SKILLS (his teachers' areas of focus — follow exactly):
-✓ The ${genTwoPart+genSingles} "general" question(s): one per skill, using these keys: ${targets.story.join(', ')}${genTwoPart?` (the two-part ones get these first)`:''}
-${nf>0?`✓ The ${nf} "fact" question(s): one per skill, about the IN-STORY DOCUMENT, using these keys: ${targets.info.join(', ')}. Each still checks a real fact from the document, framed through its skill (e.g. fact_opinion: "Which sentence from the article is an OPINION?"; info_structure: "How is the article organized?"; text_types: "Which feature shows this is a news article?"; info_explicit: "According to the article, …")
-`:''}✓ INFERENCE (also a teacher focus): at least 2 of these target questions must ALSO need inference — the answer is not stated; he must combine clues. Mark those with "also":"inference"
+✓ ${targets.coreGen?`${targets.story.length} of the ${genTwoPart+genSingles} "general" questions`:`The ${genTwoPart+genSingles} "general" question(s)`}: one per skill, using these keys: ${targets.story.join(', ')}${genTwoPart?` (the two-part ones get these first)`:''} — mark these "difficulty":"stretch"
+${targets.coreGen?`✓ The other ${targets.coreGen} "general" question(s) are CORE: skill "key_details" or "plot_events", "difficulty":"core", plainly worded, answerable by a careful reader from one clear part of the story (no inference needed). They build confidence — make them fair, not tricky
+`:''}${targets.coreInfo?`✓ ${targets.coreInfo} of the "fact" questions are CORE: skill "info_explicit", "difficulty":"core" — a fact stated plainly in the in-story document
+`:''}
+${nf>0?`✓ ${targets.coreInfo?`${targets.info.length} of the ${nf} "fact" questions`:`The ${nf} "fact" question(s)`}: one per skill, about the IN-STORY DOCUMENT, using these keys: ${targets.info.join(', ')} — "difficulty":"stretch". Each still checks a real fact from the document, framed through its skill (e.g. fact_opinion: "Which sentence from the article is an OPINION?"; info_structure: "How is the article organized?"; text_types: "Which feature shows this is a news article?"; info_explicit: "According to the article, …")
+`:''}✓ INFERENCE (also a teacher focus): at least ${targets.coreGen?1:2} of these target questions must ALSO need inference — the answer is not stated; he must combine clues. Mark those with "also":"inference"
 ✓ point_of_view questions compare the story's narrator with the first-person document (who is telling it, what each one knows or feels)
 ✓ figurative questions quote the simile/metaphor and ask what it means or why the author used it
 `:''}RULES:
@@ -1053,7 +1094,7 @@ MULTIPLE CHOICE (non-math questions ONLY):
    - "correct_choice": "A" (or B, C, D — whichever letter holds the correct answer)
    - Randomize which letter is correct each time
    - Wrong choices must be plausible: use a detail that IS in the story but doesn't answer the question, a too-literal reading, or a half-right answer. Do NOT make them silly or obviously wrong
-   - Keep all 4 choices similar in length so the longest isn't always right
+   - Keep all 4 choices similar in length so the longest isn't always right. The correct answer must NOT be the longest choice in most questions — give wrong answers the same amount of detail
    - Do NOT include "acceptable_variants" for these — just choices + correct_choice
    Math questions stay as typed-answer format (no choices).
 
@@ -1688,8 +1729,11 @@ async function handleReadyForQuestions(){
       if(items.filter(q=>q.type==='math').length>=numMathQ&&targetsCovered(items,S.targets))break; // otherwise ask once more
     }
     items=items.map(shuffleChoices);
+    setState({loadingMsg:'Checking the answer choices…'});
+    items=await balanceChoiceLengths(items,p);
     // Earn-back pool: plain single questions only (drop any Part B / Step 2 the AI added)
-    const earnBackPool=p.earnBack?pool.filter(q=>q&&q.q&&(q.type==='math'?q.answer_value!=null:Array.isArray(q.choices)&&q.correct_choice)).map(q=>{const c={...q};delete c.part_b;delete c.step2;return shuffleChoices(c);}):[];
+    let earnBackPool=p.earnBack?pool.filter(q=>q&&q.q&&(q.type==='math'?q.answer_value!=null:Array.isArray(q.choices)&&q.correct_choice)).map(q=>{const c={...q};delete c.part_b;delete c.step2;return shuffleChoices(c);}):[];
+    if(earnBackPool.length)earnBackPool=await balanceChoiceLengths(earnBackPool,p);
     if(items.length<Math.max(5,numQ-2))throw new Error(`Got fewer than ${numQ} questions. Please retry.`);
     startChoicePause(items[0]);
     setState({screen:'questions',qStartedAt:Date.now(),numQ:items.length,questions:items,currentQ:0,score:0,answers:[],wrongAttempts:[],wrongChoices:[],hintLevel:0,showFullAnswer:false,correctFeedback:null,expandedQDot:null,factBullets,factTopic,earnBackPool,earnBacksAdded:0,hl3At:null,ebNotice:null});
