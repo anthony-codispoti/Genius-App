@@ -190,8 +190,8 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
-  gio:{id:'gio',name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:6.5,mathCalibrationTag:'math-2026-10b',earnBack:3,newRules:'gio',readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
-  valentino:{id:'valentino',mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
+  gio:{id:'gio',readPacing:{wpm:230,checkpoint:true},name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:6.5,mathCalibrationTag:'math-2026-10b',earnBack:3,newRules:'gio',readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
+  valentino:{id:'valentino',earnBack:2,mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -384,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-11-02a';
+const APP_VERSION='v2026-11-02b';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -432,7 +432,7 @@ const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQues
 // on a screen worth resuming, so a refresh (or a crash that forces one) can
 // put the reader right back where they were instead of discarding everything.
 const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
-const DRAFT_FIELDS=['targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice'];
+const DRAFT_FIELDS=['pageKey','pageIdx','checkpoint','checkpointDone','checkpointResult','targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice'];
 function draftKey(p){return p.storageKey+'_draft';}
 function saveDraft(){
   if(!S.activeProfile)return;
@@ -1169,10 +1169,10 @@ function renderSwitcher(){const id=(S.activeProfile||PROFILES.gio).id;return`<di
 // ─── Home ──────────────────────────────────────────────────────────────────────
 function renderSetup(){const key=loadApiKey();return`<div class="card" style="max-width:460px;margin:60px auto;"><h1 class="mb12">📚 Daily Reading & Math</h1><p class="text-muted mb16">Enter your Anthropic API key. Stored only in this browser.</p><label>Anthropic API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Sent only to Anthropic — never stored elsewhere.</p><div class="mt16"><button class="btn btn-primary btn-full btn-lg" id="setupBtn">Continue →</button></div>${S.error?`<div class="error-box mt12">${eh(S.error)}</div>`:''}</div>`;}
 
-const RULES_TAG='rules-2026-10-27';
+const RULES_TAG='rules-2026-11-02';
 const RULES_MSG={
-  gio:{title:'⚡ NEW RULES ⚡',items:['📉 Fewer questions every session.','🔁 Miss one? You get an <b>earn-back</b> question at the end (up to 3).','🐢 Careful = done faster. Rushing = more questions.','🧮 Hard math now comes in 2 smaller steps.','💡 After the last hint, you try once more before you can see the answer.']},
-  valentino:{title:'⚡ NEW MATH RULES ⚡',items:['🧮 Hard math problems now come in 2 smaller steps.','✏️ After the last hint, you try once more before you can see the answer.']},
+  gio:{title:'⚡ NEW RULES ⚡',items:['📖 Stories now come one page at a time. Each page unlocks the next after enough time to read it.','✅ A quick check question pops up partway through. Miss it and you reread that page.','🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 3). Careful = done faster.','💡 "Show answer" unlocks only after 1 minute and 2 real tries.']},
+  valentino:{title:'⚡ NEW RULES ⚡',items:['🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 2). Careful = done faster.','💡 "Show answer" unlocks only after 1 minute and 2 real tries.','🧮 Hard math problems come in 2 smaller steps.']},
 };
 function renderRulesOverlay(p,st){
   const m=RULES_MSG[p.newRules];
@@ -1240,9 +1240,63 @@ function renderHome(){
 
 function renderLoading(){return`<div class="loading-center"><div class="spinner"></div><p>${eh(S.loadingMsg||'Writing your story…')}</p><p class="text-muted text-sm mt8">Usually takes 20–40 seconds.</p></div>`;}
 
-function renderStoryDetective(){return`<div class="session-hdr"><div><h2>🔍 Your Story</h2><span class="tag tag-accent">Detective</span></div></div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${eh(S.fullStory||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg" id="readyForQBtn">Ready for questions →</button>`;}
+// Paged reading: the story shows one ~150-word page at a time and "Next page"
+// unlocks after the page could reasonably be read (profile wpm). For the main
+// story, a checkpoint question after page 2; a miss sends him back to reread it.
+function storyPages(text){
+  const paras=String(text||'').split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean),out=[];let cur=[],n=0;
+  for(const para of paras){const w=para.split(/\s+/).length;if(n&&n+w>170){out.push(cur.join('\n\n'));cur=[];n=0;}cur.push(para);n+=w;}
+  if(cur.length)out.push(cur.join('\n\n'));
+  return out.length?out:[String(text||'')];
+}
+function pageMinSecs(text,p){const w=String(text||'').split(/\s+/).filter(Boolean).length;return Math.round(w/(p.readPacing.wpm)*60);}
+function pagedStory(key,text,finalBtn,header){
+  const p=S.activeProfile||{};
+  if(!p.readPacing)return`<div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${header||''}${eh(text||'')}</div></div>${finalBtn}`;
+  const pages=storyPages(text);
+  if(S.pageKey!==key){S.pageKey=key;S.pageIdx=0;S.pageShownAt=Date.now();S.pageHiddenMs=0;}
+  const i=Math.min(S.pageIdx||0,pages.length-1),last=i===pages.length-1;
+  if(S.checkpointShow&&S.checkpoint){
+    const cp=S.checkpoint;
+    return`<div class="card"><div class="mb8"><span class="tag tag-accent">✅ Quick check</span></div><div class="bold mb12">${eh(cp.q)}</div>${cp.choices.map((c,ci)=>`<button class="option-btn" id="cpBtn_${ci}" data-cp="${ci}">${eh(c)}</button>`).join('')}${S.checkpointMsg?`<div class="error-box mt10">${eh(S.checkpointMsg)}</div>`:''}</div>`;
+  }
+  const left=Math.ceil(pageMinSecs(pages[i],p)-(Date.now()-(S.pageShownAt||Date.now())-(S.pageHiddenMs||0))/1000);
+  if(left>0){clearTimeout(S._pageT);S._pageT=setTimeout(()=>{if(S.pageKey===key)render();},Math.min(left,5)*1000);}
+  const btn=last?(left>0?`<button class="btn btn-primary btn-full btn-lg" disabled>Keep reading… ${left}s</button>`:finalBtn)
+    :`<button class="btn btn-primary btn-full btn-lg" id="nextPageBtn" ${left>0?'disabled':''}>${left>0?`Keep reading… ${left}s`:'Next page →'}</button>`;
+  return`<div class="text-xs text-muted mb8">Page ${i+1} of ${pages.length}${S.checkpointMsg&&!S.checkpointShow?` — <span class="text-warning">${eh(S.checkpointMsg)}</span>`:''}</div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${i===0?(header||''):''}${eh(pages[i])}</div></div>${btn}`;
+}
+function handleNextPage(){
+  const p=S.activeProfile,key=S.pageKey;
+  // Checkpoint after page 2 of the main story (not the continuation)
+  if((S.pageIdx||0)===1&&p.readPacing&&p.readPacing.checkpoint&&key!=='cont'&&S.checkpoint&&!S.checkpointDone){setState({checkpointShow:true,checkpointMsg:null});return;}
+  setState({pageIdx:(S.pageIdx||0)+1,pageShownAt:Date.now(),pageHiddenMs:0,checkpointMsg:null});
+}
+function handleCheckpoint(ci){
+  const cp=S.checkpoint;if(!cp)return;
+  const ok=ci===cp.correct;
+  if(ok)setState({checkpointShow:false,checkpointDone:true,checkpointResult:S.checkpointResult||'right',checkpointMsg:null,pageIdx:2,pageShownAt:Date.now(),pageHiddenMs:0});
+  // Miss: reread page 2 (timer restarts), then continue without re-asking
+  else setState({checkpointShow:false,checkpointDone:true,checkpointResult:'missed',checkpointMsg:'Not quite — reread this page carefully.',pageIdx:1,pageShownAt:Date.now(),pageHiddenMs:0});
+}
+async function prepareCheckpoint(text){
+  const p=S.activeProfile;if(!p||!p.readPacing||!p.readPacing.checkpoint)return;
+  const pages=storyPages(text);if(pages.length<3)return;
+  const key=S.pageKey;
+  try{
+    const raw=await callClaude([{role:'user',content:`Write ONE quick multiple-choice check question for ${p.name} (age ${p.age}) about this page of a story he is reading. It should be easy for someone who read the page carefully and hard to guess for someone who skimmed: ask about a specific detail or what happened, not an opinion. 3 choices of similar length, one clearly correct.
 
-function renderStoryCYP(){return`<div class="session-hdr"><div><h2>📖 Choose Your Path</h2><span class="tag tag-accent">Decision ahead…</span></div></div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text">${eh(S.firstPart||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg" id="seenFirstPartBtn">I've read it — show me the choices →</button>`;}
+PAGE:
+${pages[1]}
+
+Return ONLY JSON: {"q":"...","choices":["...","...","..."],"correct":<0-2>}`}],'Return only valid JSON.',400);
+    const r=parseJsonLoose(raw);
+    if(r&&r.q&&Array.isArray(r.choices)&&r.choices.length>=2&&Number.isInteger(r.correct)&&r.correct<r.choices.length&&(S.pageKey===key||S.pageKey==null))S.checkpoint={q:r.q,choices:r.choices,correct:r.correct};
+  }catch{}
+}
+function renderStoryDetective(){return`<div class="session-hdr"><div><h2>🔍 Your Story</h2><span class="tag tag-accent">Detective</span></div></div>${pagedStory('main',S.fullStory,`${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg" id="readyForQBtn">Ready for questions →</button>`)}`;}
+
+function renderStoryCYP(){return`<div class="session-hdr"><div><h2>📖 Choose Your Path</h2><span class="tag tag-accent">Decision ahead…</span></div></div>${pagedStory('main',S.firstPart,`${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg" id="seenFirstPartBtn">I've read it — show me the choices →</button>`)}`;}
 
 function renderDecision(){
   const optA=extractOption(S.firstPart||'','A'),optB=extractOption(S.firstPart||'','B');
@@ -1253,7 +1307,7 @@ function renderDecision(){
 
 function renderContinuationLoading(){return`<div class="loading-center"><div class="spinner"></div><p>Writing what happens next…</p></div>`;}
 
-function renderContinuation(){return`<div class="session-hdr"><div><h2>📖 The Story Continues…</h2><span class="tag tag-accent">Choose Your Path</span></div></div><div class="story-panel mb16" style="max-height:68vh;"><div class="story-text"><strong>— Part One —</strong>\n${eh(S.firstPart||'')}\n\n<strong>— You chose: ${eh((S.topic||{}).choice||'')} —</strong>\n\n${eh(S.continuation||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg mt8" id="readyForQBtn">Ready for questions →</button>`;}
+function renderContinuation(){return`<div class="session-hdr"><div><h2>📖 The Story Continues…</h2><span class="tag tag-accent">Choose Your Path</span></div></div>${(S.activeProfile||{}).readPacing?`<details class="mb10"><summary class="history-story-toggle">📖 Reread Part One</summary><div class="history-story">${eh(S.firstPart||'')}</div></details>`:''}${(S.activeProfile||{}).readPacing?pagedStory('cont',S.continuation,`${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg mt8" id="readyForQBtn">Ready for questions →</button>`,`<strong>— You chose: ${eh((S.topic||{}).choice||'')} —</strong>\n\n`):`<div class="story-panel mb16" style="max-height:68vh;"><div class="story-text"><strong>— Part One —</strong>\n${eh(S.firstPart||'')}\n\n<strong>— You chose: ${eh((S.topic||{}).choice||'')} —</strong>\n\n${eh(S.continuation||'')}</div></div>${S.error?`<div class="error-box mb10">${eh(S.error)}</div>`:''}<button class="btn btn-primary btn-full btn-lg mt8" id="readyForQBtn">Ready for questions →</button>`}`;}
 
 // ─── Questions Screen ──────────────────────────────────────────────────────────
 function renderQuestions(){
@@ -1341,7 +1395,7 @@ function renderQuestions(){
           ${hl<3&&!(S.wrongAttempts||[]).length?`<p class="text-xs text-muted mt8">Give it your best try first — hints unlock after your first answer.</p>`:''}
           <div>
           </div>
-          ${hl>=3&&(S.wrongAttempts||[]).length>(S.hl3At??0)?`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`:hl>=3?`<p class="text-xs text-muted mt8">Use Hint 3 and try once more — then you can see the answer if you still need it.</p>`:''}
+          ${hl>=3?showAnswerGate():''}
           ${wrongAttempts.length>0?`<div class="mt10 text-center"><button class="parent-override-btn" id="parentOverrideBtn">Parent: mark correct</button></div>`:''}
         `:`<button class="btn btn-primary btn-full mt12" id="nextQBtn">Next ${qi+1<total?'question':'to results'} →</button>`}
 
@@ -1572,6 +1626,8 @@ function bindEvents(){
   on('optBBtn','click',(e)=>handleOptionChoice(e.currentTarget.dataset.choice));
   on('submitChoiceBtn','click',()=>{const v=val('customChoiceInput');if(v.trim())handleOptionChoice(v.trim());});
   on('readyForQBtn','click',handleReadyForQuestions);
+  on('nextPageBtn','click',handleNextPage);
+  document.querySelectorAll('[data-cp]').forEach(b=>b.addEventListener('click',()=>handleCheckpoint(+b.dataset.cp)));
   on('submitAnswerBtn','click',handleSubmitAnswer);
   on('hintBtn','click',()=>{const h=Math.min((S.hintLevel||0)+1,3);setState({hintLevel:h,hl3At:h>=3&&S.hl3At==null?(S.wrongAttempts||[]).length:S.hl3At});});
   on('showFullBtn','click',()=>setState({showFullAnswer:true}));
@@ -1692,8 +1748,10 @@ async function startSession(topicInput,isContinuation){
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ,targets,earnBackPool:[],earnBacksAdded:0,hl3At:null,ebNotice:null});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3,targets})}],'You are a skilled children\'s fiction writer.',3000);
-    if(format==='Choose-Your-Path')setState({screen:'story-cyp',firstPart:story,storyStartedAt:Date.now(),storySeconds:null});
-    else setState({screen:'story-detective',fullStory:story,storyStartedAt:Date.now(),storySeconds:null});
+    const pg={pageKey:null,pageIdx:0,checkpoint:null,checkpointShow:false,checkpointDone:false,checkpointResult:null,checkpointMsg:null};
+    if(format==='Choose-Your-Path')setState({...pg,screen:'story-cyp',firstPart:story,storyStartedAt:Date.now(),storySeconds:null});
+    else setState({...pg,screen:'story-detective',fullStory:story,storyStartedAt:Date.now(),storySeconds:null});
+    prepareCheckpoint(story.replace(/\n\s*Option A:[\s\S]*$/,''));
   }catch(err){setState({screen:'home',error:`Story failed: ${err.message}`});}
 }
 
@@ -1803,6 +1861,16 @@ function readPauseMs(q,p){
   return Math.round(Math.min(10,Math.max(3,words*per))*1000);
 }
 function choicesLocked(){return !!S.choicesAt&&Date.now()<S.choicesAt;}
+// "Show answer" unlocks after 60s on the question AND 2+ real tries AND one try after hint 3.
+const SHOW_ANSWER_SECS=60;
+function showAnswerGate(){
+  const tries=(S.wrongAttempts||[]).length, afterHint3=tries>(S.hl3At??0);
+  const left=S.qStartedAt?Math.ceil(SHOW_ANSWER_SECS-(Date.now()-S.qStartedAt-(S.qHiddenMs||0))/1000):0;
+  if(afterHint3&&tries>=2&&left<=0)return`<button class="btn btn-warning btn-full mt8" id="showFullBtn">Show full answer & move on</button>`;
+  if(left>0){clearTimeout(S._gateT);S._gateT=setTimeout(()=>{if(S.screen==='questions')render();},Math.min(left,5)*1000);}
+  const need=[!afterHint3?'try once more using Hint 3':'',tries<2?`make ${2-tries} more real ${2-tries===1?'try':'tries'}`:'',left>0?`keep working ${left}s more`:''].filter(Boolean);
+  return`<p class="text-xs text-muted mt8">To see the answer: ${need.join(', ')}.</p>`;
+}
 function startChoicePause(q){
   const ms=readPauseMs(q,S.activeProfile);
   S.choicesAt=ms?Date.now()+ms:null;
@@ -1875,6 +1943,7 @@ async function handleSubmitAnswer(){
 // Effort timing: when the child first and last tapped/submitted on this question.
 function markTap(){const now=Date.now();if(!S.qFirstTapAt)S.qFirstTapAt=now;S.qLastTapAt=now;}
 document.addEventListener('visibilitychange',()=>{
+  if(S.pageKey&&S.pageShownAt){if(document.hidden)S.pageHiddenAt=Date.now();else if(S.pageHiddenAt){S.pageHiddenMs=(S.pageHiddenMs||0)+(Date.now()-S.pageHiddenAt);S.pageHiddenAt=null;}}
   if(S.screen!=='questions'||!S.qStartedAt)return;
   if(document.hidden)S.qHiddenAt=Date.now();
   else if(S.qHiddenAt){S.qHiddenMs=(S.qHiddenMs||0)+(Date.now()-S.qHiddenAt);S.qHiddenAt=null;}
@@ -2050,7 +2119,7 @@ async function handleConfirmSave(opts){
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
     v:2,...bd,readingAtCap:meta.readingAtCap,
-    storySeconds:S.storySeconds??null,resumed:!!S.resumedDraft,timing:2,appVersion:APP_VERSION,targets:S.targets||null,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
+    checkpoint:S.checkpointResult||null,storySeconds:S.storySeconds??null,resumed:!!S.resumedDraft,timing:2,appVersion:APP_VERSION,targets:S.targets||null,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
