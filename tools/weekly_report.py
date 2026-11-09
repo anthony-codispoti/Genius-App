@@ -81,6 +81,9 @@ for cid, (name, focus) in KIDS.items():
         resumed = [h["date"] for h in v2 if h.get("resumed")]
         if resumed:
             print(f"Sessions resumed after a refresh: {', '.join(resumed)}")
+        fl = [h for h in v2 if "focusLeaves" in h]
+        if fl:
+            print(f"Focus mode: left the app {sum(h['focusLeaves'] for h in fl)} times in {len(fl)} sessions, {round(sum(h.get('focusAwaySecs', 0) for h in fl) / 60)} min away")
         mq = [q for h in v2 for q in h.get("questions", []) if q["type"] == "math"]
         if mq:
             print(f"Math: {sum(q['correct'] and not q.get('hintsUsed') for q in mq)}/{len(mq)} without hints, gave up (showed answer) on {sum(not q['correct'] for q in mq)}")

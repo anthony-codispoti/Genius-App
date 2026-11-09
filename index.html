@@ -191,7 +191,7 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
   gio:{id:'gio',readPacing:{wpm:230,checkpoint:true},name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:6.5,mathCalibrationTag:'math-2026-10b',earnBack:3,newRules:'gio',readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
-  valentino:{id:'valentino',earnBack:2,mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
+  valentino:{id:'valentino',focusMode:true,earnBack:2,mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -384,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-11-02c';
+const APP_VERSION='v2026-11-09a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -432,7 +432,7 @@ const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQues
 // on a screen worth resuming, so a refresh (or a crash that forces one) can
 // put the reader right back where they were instead of discarding everything.
 const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
-const DRAFT_FIELDS=['pageKey','pageIdx','checkpoint','checkpointDone','checkpointResult','targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice'];
+const DRAFT_FIELDS=['focusLeaves','focusAwayMs','pageKey','pageIdx','checkpoint','checkpointDone','checkpointResult','targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice'];
 function draftKey(p){return p.storageKey+'_draft';}
 function saveDraft(){
   if(!S.activeProfile)return;
@@ -1162,7 +1162,7 @@ function setState(patch){
 
 // ─── Render ────────────────────────────────────────────────────────────────────
 const SCREENS={setup:renderSetup,home:renderHome,loading:renderLoading,'story-cyp':renderStoryCYP,'story-detective':renderStoryDetective,decision:renderDecision,'continuation-loading':renderContinuationLoading,continuation:renderContinuation,questions:renderQuestions,wrapup:renderWrapup,'fact-reveal':renderFactReveal,'parent-review':renderParentReview,rewards:renderRewards,history:renderHistory,settings:renderSettings,'fact-pick':renderFactPick};
-function render(){document.getElementById('app').innerHTML=(SCREENS[S.screen]||renderSetup)();bindEvents();if(S.persistedState?.activeTheme)applyTheme(S.persistedState.activeTheme);}
+function render(){document.getElementById('app').innerHTML=(SCREENS[S.screen]||renderSetup)()+renderFocusOverlay();bindEvents();on('focusResumeBtn','click',handleFocusResume);if(!focusOn()&&S.focusAwayAt){S.focusAwayAt=null;clearInterval(S._focusT);}if(S.persistedState?.activeTheme)applyTheme(S.persistedState.activeTheme);}
 
 function renderSwitcher(){const id=(S.activeProfile||PROFILES.gio).id;return`<div class="child-switcher">${Object.values(PROFILES).map(p=>`<button class="child-tab${id===p.id?' active':''}" data-child-id="${p.id}">${eh(p.name)}</button>`).join('')}</div>`;}
 
@@ -1424,7 +1424,9 @@ function renderWrapup(){
     return`<div class="history-q"><div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;"><div class="text-sm"><span class="bold">${q.earnBack?'🔁 Earn-back':`Q${i+1}`}:</span> ${eh(q.q)}</div><div style="white-space:nowrap;">${a.correct?'<span class="correct-tag">✓</span>':'<span class="wrong-tag">✗</span>'}${a.hintsUsed>0?` <span class="text-xs text-muted">${a.hintsUsed}h</span>`:''}</div></div>${a.userAnswer?`<div class="text-xs text-muted mt4">Answered: ${eh(a.userAnswer)}</div>`:''}<div class="text-xs mt4"><span class="text-muted">Answer: </span>${eh(q.full_answer)}</div></div>`;
   }).join('');
   const hasReal=S.factBullets&&S.factBullets.length>0;
-  return`<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
+  const lv=S.focusLeaves||0,awayMin=Math.round((S.focusAwayMs||0)/60000);
+  const leftLine=(S.activeProfile||{}).focusMode?(lv?`<div class="error-box mb12" style="text-align:center;">Left the app ${lv} time${lv>1?'s':''}${awayMin?`, about ${awayMin} minute${awayMin>1?'s':''} away`:''}</div>`:`<div class="answer-box mb12" style="text-align:center;">✅ Stayed in the app the whole session</div>`):'';
+  return`${leftLine}<div class="card text-center" style="padding:32px 20px;"><h2 class="mb12">Session complete! 🎉</h2><div class="score-big mb4">${score}/${total}</div><div class="pts-earned">+${sessionPts} points this session</div><p class="text-muted mt8 mb16">Nice work, ${eh((S.activeProfile||PROFILES.gio).name)}.</p>${hasReal?`<button class="btn btn-secondary btn-lg mb8" id="seeRealBtn">🔍 See What Was Real</button><br>`:''}<button class="btn btn-primary btn-lg" id="goHomeDoneBtn">${S.sessionSaved?'✓ Saved — Done':'Saving…'}</button></div><div class="card"><h3 class="mb12">Session Review</h3>${qSummary||'<p class="text-muted text-sm">No answers recorded.</p>'}</div>`;
 }
 
 // ─── Parent Review ────────────────────────────────────────────────────────────
@@ -1747,6 +1749,8 @@ async function startSession(topicInput,isContinuation){
   const numQ=st.numQuestions||p.numQuestions;
   const targets=chooseTargets(p,st,numQ);
   S.resumedDraft=false;S.preSaveState=null;S.sessionSaved=false;
+  S.focusLeaves=0;S.focusAwayMs=0;S.focusAwayAt=null;S.focusPaused=null;S.focusWasFS=false;
+  if(p.focusMode)focusEnterFullscreen();
   setState({screen:'loading',loadingMsg:'Writing your story…',format,lifeLesson:lesson,mathDomain:domain,topic:{raw:topicInput,choice:null},sessionDate:today.toDateString(),score:0,currentQ:0,answers:[],wrongAttempts:[],wrongChoices:[],questions:null,firstPart:null,continuation:null,fullStory:null,hintLevel:0,showFullAnswer:false,correctFeedback:null,clarifyVisible:false,clarifyText:'',clarifyResponse:null,reviewScore:null,reviewReadingLevel:null,reviewMathLevel:null,error:null,expandedQDot:null,numQ,targets,earnBackPool:[],earnBacksAdded:0,hl3At:null,ebNotice:null});
   try{
     const story=await callClaude([{role:'user',content:buildStoryPrompt({mathCount:st.numMathQuestions||1,format,profile:p,readingLevel:st.readingLevel,mathLevel:st.mathLevel,mathDomain:domain,lifeLesson:lesson,topic:topicFinal,storySummary:isContinuation?st.lastStorySummary:null,wordLength,heroName:st.heroName,factDomain:S.factDomain||'',factCount:st.factIntensity||3,targets})}],'You are a skilled children\'s fiction writer.',3000);
@@ -1942,6 +1946,64 @@ async function handleSubmitAnswer(){
   }catch(err){setState({gradingLoading:false,gradingError:`Grading error: ${err.message}`});}
 }
 
+// ─── Focus mode (profiles with focusMode) ─────────────────────────────────────
+// During a session: full screen; leaving the page (tab/app switch, minimized,
+// exiting full screen) for 10s+ sounds a repeating chime until he returns; on
+// return a pause screen asks him to tap back in. Leaves and time away are
+// counted and shown on the final screen. Chrome keeps playing Web Audio in a
+// background tab once it was started by a tap.
+const FOCUS_SCREENS=new Set(['loading','story-cyp','story-detective','decision','continuation-loading','continuation','questions']);
+const FOCUS_ALARM_AFTER=10000,FOCUS_ALARM_EVERY=10000,FOCUS_MIN_LEAVE=3000;
+function focusOn(){return!!(S.activeProfile&&S.activeProfile.focusMode&&FOCUS_SCREENS.has(S.screen));}
+function focusAudio(){
+  try{if(!S._ac)S._ac=new (window.AudioContext||window.webkitAudioContext)();if(S._ac.state==='suspended')S._ac.resume();}catch{}
+  return S._ac;
+}
+function focusChime(){
+  const ac=focusAudio();if(!ac)return;
+  const t=ac.currentTime;
+  [880,660,880].forEach((fq,i)=>{const o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=fq;
+    g.gain.setValueAtTime(0.0001,t+i*0.25);g.gain.exponentialRampToValueAtTime(0.35,t+i*0.25+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+i*0.25+0.22);
+    o.connect(g).connect(ac.destination);o.start(t+i*0.25);o.stop(t+i*0.25+0.24);});
+}
+function focusEnterFullscreen(){
+  focusAudio();
+  const el=document.documentElement;
+  if(!document.fullscreenElement&&el.requestFullscreen)el.requestFullscreen().catch(()=>{});
+}
+function focusExitFullscreen(){if(document.fullscreenElement&&document.exitFullscreen)document.exitFullscreen().catch(()=>{});}
+function focusAway(){
+  if(!focusOn()||S.focusAwayAt)return;
+  S.focusAwayAt=Date.now();
+  clearInterval(S._focusT);
+  S._focusT=setInterval(()=>{
+    if(!S.focusAwayAt){clearInterval(S._focusT);return;}
+    const gone=Date.now()-S.focusAwayAt;
+    if(gone>=FOCUS_ALARM_AFTER&&(!S._lastChime||Date.now()-S._lastChime>=FOCUS_ALARM_EVERY-500)){S._lastChime=Date.now();focusChime();}
+  },1000);
+}
+function focusBack(){
+  if(!S.focusAwayAt)return;
+  const gone=Date.now()-S.focusAwayAt;S.focusAwayAt=null;S._lastChime=null;clearInterval(S._focusT);
+  if(gone>=FOCUS_MIN_LEAVE&&focusOn()){S.focusLeaves=(S.focusLeaves||0)+1;S.focusAwayMs=(S.focusAwayMs||0)+gone;S.focusPaused='left';render();}
+}
+function focusCheck(){
+  if(!focusOn())return;
+  // Exiting full screen only counts if full screen actually worked this session.
+  const out=document.hidden||!document.hasFocus()||(S.focusWasFS&&!document.fullscreenElement);
+  if(out)focusAway();else focusBack();
+}
+document.addEventListener('visibilitychange',focusCheck);
+window.addEventListener('blur',()=>setTimeout(focusCheck,300));
+window.addEventListener('focus',()=>setTimeout(focusCheck,100));
+document.addEventListener('fullscreenchange',()=>{if(document.fullscreenElement&&focusOn())S.focusWasFS=true;setTimeout(focusCheck,100);});
+function renderFocusOverlay(){
+  if(!S.focusPaused||!focusOn())return'';
+  const msg=S.focusPaused==='left'?'⏸️ You left the session.':'⏸️ Your session is waiting.';
+  return`<div class="pin-overlay" style="z-index:10000;"><div class="pin-box" style="text-align:center;"><h3 style="font-size:1.2rem;">${msg}</h3><p class="text-muted text-sm">Stay in the app until you finish. Leaving is counted and shown at the end.</p><button class="btn btn-primary btn-lg btn-full" id="focusResumeBtn">Tap to keep going</button></div></div>`;
+}
+function handleFocusResume(){S.focusPaused=null;focusEnterFullscreen();render();setTimeout(focusCheck,600);}
+
 // Effort timing: when the child first and last tapped/submitted on this question.
 function markTap(){const now=Date.now();if(!S.qFirstTapAt)S.qFirstTapAt=now;S.qLastTapAt=now;}
 document.addEventListener('visibilitychange',()=>{
@@ -1972,7 +2034,7 @@ function finalizeQuestion(correct,userAnswer,overridePts){
   }
   const nextQ=S.currentQ+1,isLast=nextQ>=(S.questions||[]).length;
   S.qFirstTapAt=null;S.qLastTapAt=null;S.qHiddenMs=0;S.qHiddenAt=null;
-  if(isLast){setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});handleConfirmSave({auto:true});}
+  if(isLast){S.focusWasFS=false;focusExitFullscreen();S.focusAwayAt=null;clearInterval(S._focusT);setState({qStartedAt:null,answers:newAnswers,score:newScore,screen:'wrapup',currentQ:nextQ,correctFeedback:null});handleConfirmSave({auto:true});}
   else{startChoicePause((S.questions||[])[nextQ]);}
   if(!isLast)setState({qStartedAt:Date.now(),answers:newAnswers,score:newScore,currentQ:nextQ,hintLevel:0,hl3At:null,ebNotice,showFullAnswer:false,wrongAttempts:[],wrongChoices:[],clarifyVisible:false,clarifyText:'',clarifyResponse:null,gradingError:null,expandedQDot:null,correctFeedback:null});
 }
@@ -2120,7 +2182,7 @@ async function handleConfirmSave(opts){
   const sessionEntry={
     date:todayStr,format:S.format,domain:S.mathDomain,
     factDomain:S.factDomain||null,factTopic:S.factTopic||null,
-    v:2,...bd,readingAtCap:meta.readingAtCap,
+    v:2,...bd,readingAtCap:meta.readingAtCap,focusLeaves:S.focusLeaves||0,focusAwaySecs:Math.round((S.focusAwayMs||0)/1000),
     checkpoint:S.checkpointResult||null,storySeconds:S.storySeconds??null,resumed:!!S.resumedDraft,timing:2,appVersion:APP_VERSION,targets:S.targets||null,storyWords:(S.fullStory||'').split(/\s+/).filter(Boolean).length,
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
@@ -2268,6 +2330,7 @@ window.addEventListener('pageshow',()=>{checkForUpdate();});
       Object.assign(S,draft);
       S.error=null;
       S.resumedDraft=true;
+      if(p.focusMode)S.focusPaused='resume';
     }
     if(st.activeTheme)applyTheme(st.activeTheme);
     render();
