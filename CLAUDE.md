@@ -8,3 +8,7 @@ Before a session ends, if it produced a decision, finished work, a plan or a sta
 - Format: the first line is "Project: <brain project name>", the second line is "Title: <short title>", then a blank line, then the note in plain words: what was decided or done, why, links (commit, PR, live page) and what comes next. Use "Project: Idea Inbox" if no project clearly fits.
 - Never include passwords, tokens, keys or account numbers.
 - If the Google Drive connector is not available in the session, put the same note at the end of your final message under the heading "AI Brain note".
+
+## Working across cloud and Mac (standing rule, Nov 15 2026)
+
+Working across cloud and Mac: if a step needs my MacBook Pro (Chrome logins, 1Password, local files, or a scheduled task that requires the Mac) and you're in a cloud session, request access to the Mac yourself and continue. Don't tell me to switch apps or start another session. If the Mac is offline, say so in one line and tell me to open the Claude app on it.
