@@ -77,6 +77,11 @@ for cid, (name, focus) in KIDS.items():
             print(f"Correct answer was the longest choice: {pct(lr, len(mc))} (about 25% expected if lengths give nothing away)")
             if len(mc) >= 8 and lr / len(mc) > 0.45:
                 print("FLAG: correct answers are often the longest choice -> guessable without reading")
+            rr = [q["reread"] for h in v2 for q in h.get("questions", []) if isinstance(q.get("reread"), dict)]
+            if rr:
+                done = [r for r in rr if r.get("status") == "done"]
+                extra = sum(r.get("reads", 1) - 1 for r in done)
+                print(f"Reread after a miss: {len(done)} done, {len(rr) - len(done)} skipped (error), {extra} extra rereads after a wrong quick check")
             letters = collections.Counter(q["correctChoice"] for q in mc)
             print("Correct-letter spread:", dict(sorted(letters.items())))
             fast = [q for q in mc if q.get("firstSecs") is not None and q["firstSecs"] < 5 and q.get("correct")]

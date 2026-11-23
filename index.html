@@ -191,7 +191,7 @@ body.th-ocean::before{content:'';position:fixed;bottom:0;left:0;right:0;height:3
 // ─── Profiles ─────────────────────────────────────────────────────────────────
 const PROFILES = {
   gio:{id:'gio',readPacing:{wpm:230,checkpoint:true},name:'Gio',storageKey:'gio_session_state_v1',age:11,grade:'6th',startReadingLevel:6.0,startMathLevel:6.0,defaultStoryWords:800,sentenceComplexity:'normal-to-rich sentences for an 11-year-old — varied length, descriptive, no need to simplify',mathDomains:['Numbers and Operations','Geometry','Statistics and Probability','Algebra','Ratios and Proportions','Geometry'],mathGrade:'6th (in the compacted 6th/7th grade course)',defaultClassTopic:'operations with rational numbers — add, subtract, multiply and divide positive and negative fractions, decimals and integers (his current class unit)',numQuestions:5,interests:['football','Fortnite'],gender:'boy',calibratedReadingLevel:7.0,calibratedMathLevel:6.5,mathCalibrationTag:'math-2026-10b',earnBack:3,newRules:'gio',readingFloor:4.5,readingCap:8.5,readingFocus:['text_complexity','informational','inference','theme'],readPauseSecPerWord:0.12},
-  valentino:{id:'valentino',focusMode:true,earnBack:2,mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
+  valentino:{id:'valentino',focusMode:true,rereadOnMiss:true,earnBack:2,mix:{storyTargets:2,infoTargets:1,maxGenTwoPart:1,lessonTwoPart:false},name:'Valentino',storageKey:'valentino_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Geometry','Measurement and Data','Fractions','Geometry','Measurement and Data','Algebra'],mathGrade:'4th',numQuestions:5,interests:['Mario','Super Smash Bros','Fortnite','Roblox','Minecraft'],gender:'boy',calibratedReadingLevel:4.0,calibratedMathLevel:4.5,newRules:'valentino',readingFloor:3.0,readingCap:5.0,readPauseSecPerWord:0.15,readingFocus:['inference','evidence','figurative','setting','plot_events','point_of_view','cause_effect','info_explicit','info_structure','fact_opinion','text_types'],storyFocus:['figurative','setting','plot_events','point_of_view','cause_effect'],infoFocus:['info_explicit','info_structure','fact_opinion','text_types']},
   leah:{id:'leah',name:'Leah',storageKey:'leah_session_state_v1',age:9,grade:'4th',startReadingLevel:4.0,startMathLevel:4.0,defaultStoryWords:700,sentenceComplexity:'short, clean sentences — simple words, one idea per sentence, easy for a 9-year-old',mathDomains:['Fractions','Measurement and Data','Algebra','Geometry','Fractions','Measurement and Data'],numQuestions:5,interests:['stuffed animals','dog rescue centers','animals'],pin:'12345678',gender:'girl'},
 };
 
@@ -384,7 +384,7 @@ const SB_KEY='sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK';
 // file). Lets an already-open tab detect it's running stale code — including
 // bfcache-restored tabs, which "refresh" without re-running any script — and
 // prompt a real reload instead of silently misbehaving with old logic.
-const APP_VERSION='v2026-11-09a';
+const APP_VERSION='v2026-11-23a';
 
 // ─── State helpers ─────────────────────────────────────────────────────────────
 const PARENT_PIN='48954895';
@@ -432,7 +432,7 @@ const SETTINGS_FIELDS=['readingCap','mathClassTopic','numQuestions','numMathQues
 // on a screen worth resuming, so a refresh (or a crash that forces one) can
 // put the reader right back where they were instead of discarding everything.
 const RESUMABLE_SCREENS=new Set(['story-cyp','story-detective','decision','continuation','questions']);
-const DRAFT_FIELDS=['focusLeaves','focusAwayMs','pageKey','pageIdx','checkpoint','checkpointDone','checkpointResult','targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice'];
+const DRAFT_FIELDS=['focusLeaves','focusAwayMs','pageKey','pageIdx','checkpoint','checkpointDone','checkpointResult','targets','storyStartedAt','storySeconds','qStartedAt','screen','format','lifeLesson','mathDomain','topic','firstPart','continuation','fullStory','questions','answers','wrongAttempts','wrongChoices','currentQ','score','sessionDate','numQ','hintLevel','showFullAnswer','factDomain','factDomainId','factBullets','factTopic','earnBackPool','earnBacksAdded','hl3At','ebNotice','reread'];
 function draftKey(p){return p.storageKey+'_draft';}
 function saveDraft(){
   if(!S.activeProfile)return;
@@ -1187,19 +1187,21 @@ function renderSwitcher(){const id=(S.activeProfile||PROFILES.gio).id;return`<di
 function renderSetup(){const key=loadApiKey();return`<div class="card" style="max-width:460px;margin:60px auto;"><h1 class="mb12">📚 Daily Reading & Math</h1><p class="text-muted mb16">Enter your Anthropic API key. Stored only in this browser.</p><label>Anthropic API Key</label><input type="password" id="apiKeyInput" value="${eh(key)}" placeholder="sk-ant-..." autocomplete="off"><p class="api-key-note">Sent only to Anthropic — never stored elsewhere.</p><div class="mt16"><button class="btn btn-primary btn-full btn-lg" id="setupBtn">Continue →</button></div>${S.error?`<div class="error-box mt12">${eh(S.error)}</div>`:''}</div>`;}
 
 const RULES_TAG='rules-2026-11-02';
+const RULES_TAG_BY={valentino:'rules-2026-11-23'}; // bump one child's tag to re-show only their rules
+const rulesTag=p=>RULES_TAG_BY[p.id]||RULES_TAG;
 const RULES_MSG={
   gio:{title:'⚡ NEW RULES ⚡',items:['📖 Stories now come one page at a time. Read each page carefully before moving on.','✅ A quick check question pops up partway through. Miss it and you reread that page.','🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 3). Careful = done faster.','💡 "Show answer" unlocks only after you really work the problem (at least 2 real tries).']},
-  valentino:{title:'⚡ NEW RULES ⚡',items:['🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 2). Careful = done faster.','💡 "Show answer" unlocks only after you really work the problem (at least 2 real tries).','🧮 Hard math problems come in 2 smaller steps.']},
+  valentino:{title:'⚡ NEW RULES ⚡',items:['📖 Miss a reading question? You go back and <b>read that part of the story again</b>, then answer a quick question about it.','🔁 Miss a question? You get an <b>earn-back</b> question at the end (up to 2). Careful = done faster.','💡 "Show answer" unlocks only after you really work the problem (at least 2 real tries).','🧮 Hard math problems come in 2 smaller steps.']},
 };
 function renderRulesOverlay(p,st){
   const m=RULES_MSG[p.newRules];
-  if(!m||st.rulesSeen===RULES_TAG)return'';
+  if(!m||st.rulesSeen===rulesTag(p))return'';
   return`<div class="rules-overlay"><div class="rules-box"><div class="rules-flash">${m.title}</div><ul class="rules-list">${m.items.map(i=>`<li>${i}</li>`).join('')}</ul><button class="btn btn-warning btn-lg btn-full" id="rulesGotItBtn">Got it 👍</button></div></div>`;
 }
 async function handleRulesGotIt(){
   const p=S.activeProfile;
   // Gio: fewer base questions so a careful session is shorter than before.
-  const{stamped}=await saveSettingsSynced(p,b=>({...b,rulesSeen:RULES_TAG,...(p.id==='gio'&&(b.numQuestions||0)>7?{numQuestions:7,numFactQuestions:Math.min(b.numFactQuestions||0,2)}:{})}));
+  const{stamped}=await saveSettingsSynced(p,b=>({...b,rulesSeen:rulesTag(p),...(p.id==='gio'&&(b.numQuestions||0)>7?{numQuestions:7,numFactQuestions:Math.min(b.numFactQuestions||0,2)}:{})}));
   setState({persistedState:calibrate(p,stamped)});
 }
 function renderHome(){
@@ -1333,6 +1335,7 @@ function renderQuestions(){
   const qs=S.questions||[],qi=S.currentQ,q=qs[qi];
   if(!q)return renderWrapup();
   const total=qs.length,hl=S.hintLevel||0,showFull=S.showFullAnswer;
+  if(S.reread&&S.reread.qi===qi)return`<div class="session-hdr"><div><h2>Question ${qi+1} of ${total}</h2><div class="text-muted text-sm">Go back to the story</div></div></div>${renderReread()}`;
   const sessionPts=(S.answers||[]).reduce((s,a)=>s+(a.pointsEarned||0),0);
 
   // Progress dots
@@ -1648,6 +1651,8 @@ function bindEvents(){
   on('submitChoiceBtn','click',()=>{const v=val('customChoiceInput');if(v.trim())handleOptionChoice(v.trim());});
   on('readyForQBtn','click',handleReadyForQuestions);
   on('nextPageBtn','click',handleNextPage);
+  on('rrReadBtn','click',()=>{if(S.reread){S.reread.stage='question';S.reread.msg=null;render();}});
+  document.querySelectorAll('[data-rr]').forEach(b=>b.addEventListener('click',()=>handleRereadPick(+b.dataset.rr)));
   document.querySelectorAll('[data-cp]').forEach(b=>b.addEventListener('click',()=>handleCheckpoint(+b.dataset.cp)));
   on('submitAnswerBtn','click',handleSubmitAnswer);
   on('hintBtn','click',()=>{const h=Math.min((S.hintLevel||0)+1,3);setState({hintLevel:h,hl3At:h>=3&&S.hl3At==null?(S.wrongAttempts||[]).length:S.hl3At});});
@@ -1899,6 +1904,69 @@ function startChoicePause(q){
   S.choicesAt=ms?Date.now()+ms:null;
   if(ms)setTimeout(()=>{if(S.screen==='questions')render();},ms+30);
 }
+// Nov 23 2026 (Valentino): a wrong first pick sends him back to the part of the
+// story that holds the answer. He reads it (button grayed until he could have),
+// then answers a new question about that part. A wrong pick there sends him back
+// to reread. Then he returns to the original question. Rushing now takes longer
+// than reading carefully. Any failure skips this step and the session goes on.
+const REREAD_SECS_PER_WORD=0.3,REREAD_MIN_SECS=8;
+async function startReread(q,qi){
+  const p=S.activeProfile||{};
+  const paras=String(S.fullStory||'').split(/\n\s*\n/).map(x=>x.trim()).filter(Boolean);
+  if(paras.length<2)return;
+  S.reread={qi,stage:'loading',startedAt:Date.now(),tries:0,reads:1};render();
+  const correct=choiceText((q.choices||[])['ABCD'.indexOf(q.correct_choice)]||'');
+  try{
+    const raw=await callClaude([{role:'user',content:`${p.name} (age ${p.age}) missed this reading question, probably by not reading carefully.
+
+QUESTION: ${q.q}
+CORRECT ANSWER: ${correct}
+
+STORY PARAGRAPHS (numbered):
+${paras.map((t,i)=>`[${i}] ${t}`).join('\n\n')}
+
+1. Pick the ONE paragraph that best shows the correct answer.
+2. Write ONE new multiple-choice question about a specific detail in THAT paragraph only. It must be easy for someone who just read that paragraph carefully and hard to guess for someone who did not. Do not ask the same question again and do not give away the answer to the original question.
+3. Give 3 choices of similar length. The correct choice must NOT be the longest.
+
+Return ONLY JSON: {"paragraph":<number>,"q":"...","choices":["...","...","..."],"correct":<index 0-2>}`}],'You write short reading check questions for kids. Return only valid JSON.',800);
+    const r=parseJsonLoose(raw);
+    if(!S.reread||S.reread.qi!==qi)return;
+    const pi=r&&Number.isInteger(r.paragraph)?r.paragraph:-1;
+    if(pi<0||pi>=paras.length||!r.q||!Array.isArray(r.choices)||r.choices.length<2||!Number.isInteger(r.correct)||r.correct<0||r.correct>=r.choices.length)throw new Error('bad reread JSON');
+    // shuffle the choices
+    const order=r.choices.map((_,i)=>i);for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    S.reread={...S.reread,stage:'read',para:paras[pi],paraIdx:pi,q:r.q,choices:order.map(i=>String(r.choices[i])),correct:order.indexOf(r.correct),shownAt:Date.now(),wrong:[]};
+    render();
+  }catch(e){
+    console.warn('Reread step skipped',e);
+    const qs=S.questions||[];if(qs[qi])qs[qi]={...qs[qi],reread:{status:'failed'}};
+    S.reread=null;render();
+  }
+}
+function rereadMinSecs(t){const w=String(t||'').split(/\s+/).filter(Boolean).length;return Math.max(REREAD_MIN_SECS,Math.round(w*REREAD_SECS_PER_WORD));}
+function renderReread(){
+  const r=S.reread;
+  if(r.stage==='loading'&&Date.now()-r.startedAt>60000){S.reread=null;setTimeout(render,0);return'';} // stuck (e.g. app reopened mid-load)
+  if(r.stage==='loading')return`<div class="card text-center"><div class="bold mb8">🔎 Not quite.</div><p class="text-muted">Finding the part of the story that has the answer…</p></div>`;
+  if(r.stage==='read'){
+    const left=Math.ceil(rereadMinSecs(r.para)-(Date.now()-r.shownAt)/1000);
+    if(left>0){clearTimeout(S._rrT);S._rrT=setTimeout(()=>{if(S.reread&&S.reread.stage==='read')render();},Math.min(left,5)*1000);}
+    return`<div class="card"><div class="mb8"><span class="tag" style="border-color:var(--warning);color:var(--warning);">📖 Read this part again</span></div>${r.msg?`<div class="error-box mb10">${eh(r.msg)}</div>`:''}<p class="text-muted text-sm mb10">The answer is in this part of the story. Read it carefully. Then you get a quick question about it.</p><div class="story-panel mb16"><div class="story-text">${eh(r.para)}</div></div><button class="btn btn-primary btn-full btn-lg" id="rrReadBtn" ${left>0?'disabled':''}>I read it →</button></div>`;
+  }
+  return`<div class="card"><div class="mb8"><span class="tag tag-accent">✅ Quick check</span></div><div class="bold mb12">${eh(r.q)}</div>${r.choices.map((c,ci)=>`<button class="option-btn" data-rr="${ci}">${eh(c)}</button>`).join('')}</div>`;
+}
+function handleRereadPick(ci){
+  const r=S.reread;if(!r||r.stage!=='question')return;
+  r.tries++;
+  if(ci===r.correct){
+    const qs=S.questions||[];
+    if(qs[r.qi])qs[r.qi]={...qs[r.qi],reread:{status:'done',tries:r.tries,reads:r.reads,secs:Math.round((Date.now()-r.startedAt)/1000)}};
+    S.reread=null;startChoicePause(qs[S.currentQ]);render();return;
+  }
+  // Wrong: back to reading the same part, timer restarts
+  r.reads++;r.stage='read';r.shownAt=Date.now();r.msg='Not quite. Read it again carefully.';render();
+}
 function handleChoiceSelect(letter){
   const q=(S.questions||[])[S.currentQ];
   if(!q||S.correctFeedback||choicesLocked())return;
@@ -1917,6 +1985,7 @@ function handleChoiceSelect(letter){
     const newWrong=[...(S.wrongChoices||[]),letter];
     const newWrongAttempts=[...(S.wrongAttempts||[]),`Choice ${letter}`];
     setState({wrongChoices:newWrong,wrongAttempts:newWrongAttempts});
+    if(newWrong.length===1&&(S.activeProfile||{}).rereadOnMiss&&q.type!=='math'&&!q.reread)startReread(q,S.currentQ);
   }
 }
 
@@ -2204,7 +2273,7 @@ async function handleConfirmSave(opts){
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer,eb:!!q.earnBack,lenFix:q.lenFix||null};}),earnBacks:S.earnBacksAdded||0,
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer,eb:!!q.earnBack,lenFix:q.lenFix||null,reread:q.reread||null};}),earnBacks:S.earnBacksAdded||0,
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);
