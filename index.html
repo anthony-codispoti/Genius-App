@@ -691,34 +691,51 @@ function targetSetupText(t){
 // choices rewritten to similar length. Part B choices are quoted story
 // sentences and can't be rewritten, so they're skipped. Any failure keeps the originals.
 function choiceText(c){return String(c).replace(/^\s*[A-D][.)]\s*/,'');}
+// Nov 23 2026 rewrite. The Nov 2 version still left the correct answer longest
+// ~70% of the time because (1) it only acted when the correct answer was 10%+
+// longer, (2) it asked for wrong answers of the SAME length, so they came back
+// slightly shorter and the correct one stayed longest, (3) it never re-checked,
+// and (4) any failure was silent. Now: any margin counts, the rewrite must make
+// at least one wrong answer LONGER than the correct one, code re-checks after
+// each round (up to 3), and each question records the result (lenFix) so the
+// weekly report shows whether this step actually worked.
 function correctIsLongest(q){
   if(!Array.isArray(q.choices)||q.choices.length<3||!q.correct_choice||q.partLabel==='Part B'||q.type==='math')return false;
-  const ci='ABCD'.indexOf(q.correct_choice);const L=q.choices.map(c=>choiceText(c).length);
-  const others=L.filter((_,i)=>i!==ci);return L[ci]>Math.max(...others)*1.1;
+  const ci='ABCD'.indexOf(q.correct_choice);if(ci<0)return false;const L=q.choices.map(c=>choiceText(c).length);
+  const others=L.filter((_,i)=>i!==ci);return L[ci]>=Math.max(...others);
 }
 async function balanceChoiceLengths(items,p){
-  const bad=items.map((q,i)=>({q,i})).filter(x=>correctIsLongest(x.q));
-  if(!bad.length)return items;
-  const payload=bad.map(({q,i})=>({id:i,question:q.q,correct:choiceText(q.choices['ABCD'.indexOf(q.correct_choice)]),wrong:q.choices.filter((_,k)=>k!=='ABCD'.indexOf(q.correct_choice)).map(choiceText)}));
-  try{
-    const raw=await callClaude([{role:'user',content:`These are multiple-choice reading questions for ${p.name}, age ${p.age}. In each one the CORRECT answer is noticeably longer than the wrong ones, so a child can guess it without reading.
+  let out=[...items];
+  const tried=new Set();
+  for(let round=0;round<3;round++){
+    const bad=out.map((q,i)=>({q,i})).filter(x=>correctIsLongest(x.q));
+    if(!bad.length)break;
+    bad.forEach(({i})=>tried.add(i));
+    const payload=bad.map(({q,i})=>{const ci='ABCD'.indexOf(q.correct_choice);const correct=choiceText(q.choices[ci]);return{id:i,question:q.q,correct,correct_chars:correct.length,wrong:q.choices.filter((_,k)=>k!==ci).map(choiceText)};});
+    try{
+      const raw=await callClaude([{role:'user',content:`These are multiple-choice reading questions for ${p.name}, age ${p.age}. In each one the CORRECT answer is the longest choice, so a child can pick it without reading.
 
-Rewrite ONLY the wrong answers so each is about the same length as the correct answer (within a few words), with similar detail and tone. They must stay clearly wrong to a careful reader, plausible to a careless one, and use details from the same story where possible. Do not change the correct answer or the question.
+Rewrite ONLY the wrong answers. Rules:
+- At least ONE wrong answer must be clearly LONGER than the correct answer (more than correct_chars characters, by at least 8 characters).
+- The other wrong answers should be about the same length as the correct answer.
+- Give wrong answers the same amount of detail and the same tone as the correct answer.
+- They must stay clearly wrong to a careful reader, plausible to a careless one, and use details from the same story where possible.
+- Do not change the correct answer or the question.
 
 ${JSON.stringify(payload)}
 
 Return ONLY JSON: {"fixes":[{"id":<id>,"wrong":["...","...","..."]}]} with the wrong answers in the same order as given.`}],'You write fair multiple-choice distractors. Return only valid JSON.',3000);
-    const r=parseJsonLoose(raw);const fixes=(r&&r.fixes)||[];
-    const out=[...items];
-    for(const fx of fixes){
-      const q=out[fx.id];if(!q||!Array.isArray(fx.wrong))continue;
-      const ci='ABCD'.indexOf(q.correct_choice);const oldWrong=q.choices.filter((_,k)=>k!==ci);
-      if(fx.wrong.length!==oldWrong.length||fx.wrong.some(w=>!w||typeof w!=='string'))continue;
-      let w=0;const nc=q.choices.map((c,k)=>k===ci?c:`${'ABCD'[k]}. ${fx.wrong[w++].replace(/^\s*[A-D][.)]\s*/,'')}`);
-      out[fx.id]={...q,choices:nc};
-    }
-    return out;
-  }catch(e){console.warn('Choice balancing skipped',e);return items;}
+      const r=parseJsonLoose(raw);const fixes=(r&&r.fixes)||[];
+      for(const fx of fixes){
+        const q=out[fx.id];if(!q||!Array.isArray(fx.wrong))continue;
+        const ci='ABCD'.indexOf(q.correct_choice);const oldWrong=q.choices.filter((_,k)=>k!==ci);
+        if(fx.wrong.length!==oldWrong.length||fx.wrong.some(w=>!w||typeof w!=='string'))continue;
+        let w=0;const nc=q.choices.map((c,k)=>k===ci?c:`${'ABCD'[k]}. ${fx.wrong[w++].replace(/^\s*[A-D][.)]\s*/,'')}`);
+        out[fx.id]={...q,choices:nc};
+      }
+    }catch(e){console.warn('Choice balancing round failed',round,e);}
+  }
+  return out.map((q,i)=>tried.has(i)?{...q,lenFix:correctIsLongest(q)?'failed':'fixed'}:q);
 }
 function shuffleChoices(q){
   if(!Array.isArray(q.choices)||q.choices.length<2||!q.correct_choice)return q;
@@ -2187,7 +2204,7 @@ async function handleConfirmSave(opts){
     score,total:numQ,pointsEarned:sessionPts,earlyBird,
     allNoHint,hadComeback,readingLevelUp:meta.readingLevelUp,mathLevelUp:meta.mathLevelUp,
     story:S.fullStory||'',
-    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer,eb:!!q.earnBack};}),earnBacks:S.earnBacksAdded||0,
+    readingLevel:rrl,questions:(S.questions||[]).map((q,i)=>{const a=(S.answers||[])[i]||{};return{secs:a.secs??null,firstSecs:a.firstSecs??null,awaySecs:a.awaySecs??0,tries:a.tries??null,choices:q.choices||null,correctChoice:q.correct_choice||null,part:q.partLabel||null,also:q.also||null,q:q.q,type:q.type,skill:q.skill||null,difficulty:q.difficulty||null,correct:!!a.correct,hintsUsed:a.hintsUsed||0,userAnswer:a.userAnswer||'',fullAnswer:q.full_answer,eb:!!q.earnBack,lenFix:q.lenFix||null};}),earnBacks:S.earnBacksAdded||0,
   };
 
   const newHistory=[...(st.sessionHistory||[]),sessionEntry].slice(-30);

@@ -1,6 +1,6 @@
 """Weekly Genius App report: python3 -I tools/weekly_report.py
 Reads both kids' state from Supabase and prints a plain-text summary of the last 7 days."""
-import json, urllib.request, datetime, collections
+import json, urllib.request, datetime, collections, re
 
 URL = "https://dtcsjhxfnjxnfeyfeeaj.supabase.co/rest/v1/child_state?child_id=eq.{}&select=state"
 KEY = "sb_publishable_-Nct9kceaJsPAlZ8jhStGw_EujErrUK"
@@ -62,9 +62,18 @@ for cid, (name, focus) in KIDS.items():
         mc = [q for h in v2 if h.get("timing") == 2 for q in h.get("questions", []) if q.get("choices") and q.get("correctChoice")]
         if mc:
             def longest(q):
-                lens = [len(c) for c in q["choices"]]
-                return lens.index(max(lens)) == "ABCD".index(q["correctChoice"])
+                # same rule as the app: letter prefix stripped, ties count, Part B (quoted story lines) excluded
+                lens = [len(re.sub(r"^\s*[A-D][.)]\s*", "", c)) for c in q["choices"]]
+                ci = "ABCD".index(q["correctChoice"])
+                return lens[ci] >= max(l for i, l in enumerate(lens) if i != ci)
+            mc = [q for q in mc if q.get("part") != "Part B" and q.get("type") != "math"]
             lr = sum(longest(q) for q in mc)
+            fixed = sum(1 for q in mc if q.get("lenFix") == "fixed")
+            failed = sum(1 for q in mc if q.get("lenFix") == "failed")
+            if fixed or failed:
+                print(f"Answer-length fix: {fixed} fixed, {failed} still longest after 3 tries")
+            if failed >= 3:
+                print("FLAG: the answer-length fix is failing on several questions")
             print(f"Correct answer was the longest choice: {pct(lr, len(mc))} (about 25% expected if lengths give nothing away)")
             if len(mc) >= 8 and lr / len(mc) > 0.45:
                 print("FLAG: correct answers are often the longest choice -> guessable without reading")
